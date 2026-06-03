@@ -29,12 +29,22 @@ The fixes are:
 We will also add a Kali/HTB preflight workflow before cloud or VM testing:
 
 - `config-kali.yaml` contains Kali-specific runtime overrides.
+- `scripts/config_secrets.sh` prompts for API keys with hidden input and exports them into the current shell when sourced.
 - `scripts/preflight.sh` performs executable checks instead of relying on a static checklist.
 - `scripts/msfinstall.sh` preserves the existing Metasploit installer helper under the `scripts/` directory.
 
 ## Scope Boundaries
 
 Metasploit and searchsploit remain allowlisted tools that an exploit agent may propose through `CommandProposal`. They are not orchestrated by `scan_runner.py`, and v1 does not automate Metasploit module selection, payload setup, session handling, or post-exploitation.
+
+If preflight warns that these optional proposal tools are missing on Kali, install them with apt:
+
+```text
+sudo apt update
+sudo apt install -y exploitdb metasploit-framework
+```
+
+`searchsploit` is provided by the `exploitdb` package. `msfconsole` is provided by the `metasploit-framework` package. In the local Docker Kali container, the shell runs as `root`, so use `apt-get update` and `apt-get install -y ...` without `sudo`.
 
 Interactive execution remains disabled in v1. A future ADR should define a TTY/session manager before enabling `requires_interactive=True`.
 
@@ -48,7 +58,7 @@ Before running against an HTB target on Kali:
 
 ```text
 uv sync --group dev
-export ANTHROPIC_API_KEY=...
+ENV=kali source scripts/config_secrets.sh
 ./scripts/config_vpn.sh vpn/machines_us-3.ovpn tun0
 source .pentestagent-vpn.env
 ./scripts/preflight.sh
@@ -70,6 +80,7 @@ First live runs should not use `--auto-approve`; every generated `CommandProposa
 - the configured knowledge base validates through `tests/test_knowledge_base.py`;
 - crawler/preprocessing scripts are not required for runtime preflight;
 - `ANTHROPIC_API_KEY` is set, unless the run will use `--no-llm`;
+- `LANGSMITH_API_KEY` is set when `LANGSMITH_TRACING=true`;
 - the full pytest suite passes.
 
 The script exits non-zero on hard failures and prints the exact `uv run python -m pentestagent.main ... --env kali` command to start the agent.
@@ -110,6 +121,7 @@ Kali-specific validation also includes:
 
 ```text
 bash -n scripts/config_vpn.sh
+bash -n scripts/config_secrets.sh
 bash -n scripts/preflight.sh
 bash -n scripts/msfinstall.sh
 ```

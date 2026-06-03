@@ -348,6 +348,8 @@ Some subdirectories are conditional:
 
 `observability/artifacts.py` owns run-scoped paths and artifact writes. `observability/logger.py` owns the chronological JSONL event log.
 
+LangSmith Cloud tracing is optional and additive. Local JSONL/report artifacts remain the durable audit trail. When `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` are exported, `pentestagent.main` wraps the LangGraph invocation in a LangSmith tracing context and the Anthropic client is wrapped so LLM calls appear as child spans. Tracing must stay disabled for runs whose prompts, recon summaries, proposed commands, or command output excerpts should not leave the local lab.
+
 ## Alternatives Considered
 
 ### Keep the current single-loop agent

@@ -35,8 +35,8 @@ else
 fi
 
 # Runtime + dev deps must import inside the uv env.
-if uv run python -c "import chromadb, langgraph, pydantic, yaml, xmltodict" 2>/dev/null; then
-  ok "runtime deps importable (chromadb, langgraph, pydantic, pyyaml, xmltodict)"
+if uv run python -c "import chromadb, langgraph, langsmith, pydantic, yaml, xmltodict" 2>/dev/null; then
+  ok "runtime deps importable (chromadb, langgraph, langsmith, pydantic, pyyaml, xmltodict)"
 else
   bad "runtime deps missing. Run: uv sync"
 fi
@@ -54,9 +54,23 @@ for t in rustscan nmap dirsearch whatweb; do
   if command -v "$t" >/dev/null 2>&1; then ok "$t"; else bad "$t not found (scan pipeline needs it)"; fi
 done
 # Tools the LLM may propose as commands (allowlisted) but not strictly required:
-for t in searchsploit msfconsole curl; do
-  if command -v "$t" >/dev/null 2>&1; then ok "$t"; else warn "$t not found (LLM may propose it; not required to start)"; fi
-done
+if command -v searchsploit >/dev/null 2>&1; then
+  ok "searchsploit"
+else
+  warn "searchsploit not found (optional; Kali package: apt-get install -y exploitdb)"
+fi
+
+if command -v msfconsole >/dev/null 2>&1; then
+  ok "msfconsole"
+else
+  warn "msfconsole not found (optional; Kali package: apt-get install -y metasploit-framework)"
+fi
+
+if command -v curl >/dev/null 2>&1; then
+  ok "curl"
+else
+  warn "curl not found (optional proposal tool; Kali package: apt-get install -y curl)"
+fi
 
 # --- 3. Config -------------------------------------------------------------
 hdr "3. Config (env: $ENV_NAME)"
@@ -125,6 +139,21 @@ if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
 else
   warn "ANTHROPIC_API_KEY not set (required unless you run with --no-llm)"
 fi
+
+case "${LANGSMITH_TRACING:-}" in
+  1|true|TRUE|yes|YES|on|ON)
+    if [ -n "${LANGSMITH_API_KEY:-}" ]; then
+      ok "LANGSMITH_API_KEY is set"
+    else
+      bad "LANGSMITH_TRACING is enabled but LANGSMITH_API_KEY is missing"
+    fi
+    LS_PROJECT="$(uv run python -c "from pentestagent.config import Settings; s=Settings.load(env='${ENV_NAME}'); print(s.langsmith_project or 'default')" 2>/dev/null)"
+    if [ -n "$LS_PROJECT" ]; then ok "LangSmith project: $LS_PROJECT"; else warn "could not resolve LangSmith project"; fi
+    ;;
+  *)
+    ok "LangSmith tracing disabled (local reports still written)"
+    ;;
+esac
 
 # --- 7. Test suite ---------------------------------------------------------
 hdr "7. Test suite"

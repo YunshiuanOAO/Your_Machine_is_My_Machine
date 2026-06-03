@@ -161,11 +161,16 @@ The expected container-side test flow is:
 ```bash
 cd /app
 uv sync --group dev
+ENV=kali source scripts/config_secrets.sh
 ./scripts/config_vpn.sh vpn/<profile>.ovpn tun0
 source .pentestagent-vpn.env
 ./scripts/preflight.sh
 uv run python -m pentestagent.main -t <TARGET_IP> --env kali
 ```
+
+`scripts/config_secrets.sh` must be sourced because a normal executed script cannot export variables back into the parent shell. It prompts with hidden input for API keys, exports only into the current shell, and does not write secrets to disk.
+
+LangSmith Cloud tracing is optional. When enabled, traces can include prompts, recon summaries, command proposals, and selected command output excerpts. Leave `LANGSMITH_TRACING` unset or `false` for runs that must stay local-only.
 
 If the VPN profile should be read from outside `/app`, mount it explicitly in `docker-compose.yml`, for example `./vpn/lab.ovpn:/root/lab.ovpn:ro`, then run `./scripts/config_vpn.sh /root/lab.ovpn tun0` inside the container.
 
@@ -200,6 +205,37 @@ ssh -p 2222 root@localhost
 
 For a real remote host, investigate before removing a known-hosts entry. For this local Docker lab, the changed key is normal after image rebuilds or container recreation.
 
+If preflight prints optional-tool warnings for `searchsploit` or `msfconsole`, the agent can still start. These tools are allowlisted because the LLM may propose them, but v1 does not require them for recon. To install them inside the local Kali container:
+
+```bash
+apt-get update
+apt-get install -y exploitdb metasploit-framework
+```
+
+`exploitdb` provides `searchsploit`; `metasploit-framework` provides `msfconsole`. On a normal Kali VM user shell, prefix those commands with `sudo`. To bake them into the local Docker image, uncomment the optional heavy-tools install block in `docker/Dockerfile.kali-local` and rebuild the container.
+
+If apt prints `E: Unable to locate package exploitdb`, first refresh the apt package index. On a normal Kali VM user shell:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y exploitdb metasploit-framework
+```
+
+Inside the local Docker Kali container, the shell runs as `root`, so use:
+
+```bash
+apt-get update
+apt-get install -y exploitdb metasploit-framework
+```
+
+If the terminal stops showing typed characters after interrupting a hidden secret prompt, reset the terminal:
+
+```bash
+stty sane
+```
+
+`scripts/config_secrets.sh` uses the shell's silent `read` path for Bash/Zsh so Ctrl+C should restore the terminal cleanly, but `stty sane` is the recovery command for any shell left in no-echo mode.
+
 ## Consequences
 
 Positive:
@@ -228,6 +264,7 @@ Static checks:
 
 ```bash
 bash -n scripts/config_vpn.sh
+bash -n scripts/config_secrets.sh
 bash -n scripts/preflight.sh
 UV_CACHE_DIR=.uv-cache uv run pytest -q
 ```

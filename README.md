@@ -12,6 +12,7 @@ LLM agents propose structured commands, but only the local executor validates an
 
 - Python managed with `uv`
 - An Anthropic API key for LLM-backed runs
+- Optional LangSmith API key for cloud tracing
 - Chroma-backed local knowledge base dependencies
 - External tools for live Kali scans:
   - `rustscan`
@@ -37,6 +38,22 @@ Set your API key:
 ```bash
 export ANTHROPIC_API_KEY="..."
 ```
+
+Or use the prompt helper so pasted secrets are hidden and not written to shell history:
+
+```bash
+source scripts/config_secrets.sh
+```
+
+Optional LangSmith Cloud tracing:
+
+```bash
+export LANGSMITH_TRACING=true
+export LANGSMITH_API_KEY="..."
+export LANGSMITH_PROJECT=pentestagent-dev
+```
+
+LangSmith traces can include prompts, recon summaries, command proposals, and selected command output excerpts. Keep tracing disabled for data you do not want uploaded to LangSmith Cloud.
 
 The default knowledge base path is configured as `PENTEST_KNOWLEDGE_BASE_PATH` and currently points to `my_knowledge_base`.
 
@@ -100,7 +117,7 @@ uv sync --group dev
 3. Confirm your secret is available:
 
 ```bash
-export ANTHROPIC_API_KEY="..."
+ENV=kali source scripts/config_secrets.sh
 ```
 
 4. Put your `.ovpn` profile under `vpn/`, then start/check the HTB VPN:
@@ -130,6 +147,7 @@ The preflight checks:
 - configured wordlist path
 - Chroma knowledge base
 - `ANTHROPIC_API_KEY`
+- LangSmith env wiring, if `LANGSMITH_TRACING=true`
 - the pytest suite
 
 6. First live run, without auto-approval:
@@ -196,6 +214,8 @@ commands/
 
 The command id is a UUID. Its task mapping and command metadata are recorded in `events.jsonl` and `final_report.json`.
 
+If `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` are exported, the LangGraph run and Anthropic model calls are also traced to the configured LangSmith project. Local artifact files are still written either way.
+
 ## Useful Commands
 
 Run with Kali config:
@@ -247,5 +267,7 @@ uv run python -m pentestagent.main -t <TARGET_IP> --env kali
 - VPN interface missing: run `./scripts/config_vpn.sh vpn/<profile>.ovpn tun0`, then `source .pentestagent-vpn.env`.
 - Chroma import failure: run `uv sync`.
 - Knowledge-base failure: confirm `my_knowledge_base/` exists and contains the expected Chroma collection.
+- LangSmith warning: export `LANGSMITH_API_KEY` only when `LANGSMITH_TRACING=true`; otherwise cloud tracing is intentionally disabled.
+- Terminal stopped showing typed characters after an interrupted hidden prompt: run `stty sane`.
 
 Only run this against systems where you have explicit authorization.

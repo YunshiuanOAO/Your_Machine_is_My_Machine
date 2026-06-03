@@ -19,6 +19,10 @@ rag:
   max_snippets: 6
   snippet_budget_chars: 2000
 
+observability:
+  langsmith_tracing: false
+  langsmith_project: pentestagent-dev
+
 tools:
   allowed:
     - nmap

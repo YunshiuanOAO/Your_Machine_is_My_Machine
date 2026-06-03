@@ -7,6 +7,9 @@ runtime:
   max_retries: 4
   run_timeout_seconds: 3600
 
+observability:
+  langsmith_project: pentestagent-kali
+
 timeouts:
   # Full-range RustScan + Nmap service scans against a live HTB box are slower
   # than a local lab target; give them more headroom.

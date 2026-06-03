@@ -13,6 +13,7 @@ The current package has several runtime settings:
 - retry and wall-clock limits;
 - command, scan, and web-scan timeouts;
 - RAG retrieval limits such as top-k and snippet budgets;
+- observability toggles for local JSONL artifacts and optional LangSmith Cloud tracing;
 - allowed tool names;
 - environment-specific behavior for local development, cloud testing, and HTB/Kali usage.
 
@@ -64,6 +65,10 @@ rag:
   max_snippets: 6
   snippet_budget_chars: 2000
 
+observability:
+  langsmith_tracing: false
+  langsmith_project: pentestagent-dev
+
 tools:
   allowed:
     - nmap
@@ -109,12 +114,16 @@ PENTEST_RAG_TOP_K=3
 PENTEST_RAG_SNIPPET_BUDGET_CHARS=2000
 PENTEST_RUN_TIMEOUT_SECONDS=1800
 PENTEST_AUTO_APPROVE=false
+LANGSMITH_TRACING=false
+LANGSMITH_PROJECT=pentestagent-cloud
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
 ```
 
 Secrets stay in environment variables and must not be written to YAML:
 
 ```text
 ANTHROPIC_API_KEY=...
+LANGSMITH_API_KEY=...
 ```
 
 ## Knowledge Base And Preprocessing Boundary
@@ -132,8 +141,49 @@ There is no separate application database in v1. Chroma's internal SQLite file i
 - `timeouts.scan_seconds` applies to RustScan/Nmap scan steps.
 - `timeouts.web_scan_seconds` applies to Dirsearch/WhatWeb web steps.
 - `rag.top_k` and `rag.snippet_budget_chars` are hard context-budget controls. RAG should not silently expand prompt size.
+- `observability.langsmith_tracing` defaults to `false`. LangSmith Cloud tracing is opt-in and requires `LANGSMITH_API_KEY` in the environment.
 - `execution.exploit_dispatch` is `sequential` for v1. Parallel fan-out is a v2 change.
 - `execution.allow_interactive` remains `false` for v1. Interactive tools require a future TTY/session manager.
+
+## Current v1 Workflow Budgets
+
+The graph runs in this order:
+
+```text
+recon_agent -> decision_coordinator -> exploit_agent -> approval -> command_executor -> exploit_assessor -> aggregator -> decision_coordinator/report
+```
+
+`execution.exploit_dispatch: sequential` means only one pending `ExploitTask` and one proposed command are active at a time. The current base config allows at most `runtime.max_tasks: 3` exploit tasks from the decision coordinator. `config-kali.yaml` does not override this, so Kali/HTB runs also use a maximum of three exploit tasks unless `PENTEST_MAX_TASKS` overrides it.
+
+`runtime.max_retries` is a global retry-cycle budget for the whole run, not a per-subagent counter. The aggregator increments `retry_count` only when the latest `ExploitResult.status` is `retry`. A `failed` or `blocked` result makes that task terminal; a `success` result ends the run with a report; exhausting `max_retries` also routes to the final report.
+
+Effective default budgets:
+
+- `config.yaml` dev/default: `max_tasks: 3`, `max_retries: 2`, `run_timeout_seconds: 3600`, `command_seconds: 300`, `scan_seconds: 300`, `web_scan_seconds: 180`.
+- `config-kali.yaml`: `max_tasks: 3` inherited, `max_retries: 4`, `run_timeout_seconds: 3600`, `command_seconds: 300`, `scan_seconds: 600`, `web_scan_seconds: 300`.
+
+For exploit-agent commands, the executor uses `min(CommandProposal.timeout_seconds, timeouts.command_seconds)`. The prompt default is `timeout_seconds: 300`, and the current command cap is also 300 seconds. Recon scans use the separate scan and web-scan timeout settings.
+
+## CVE And RAG Selection
+
+The agent does not run a separate CVE database sync or crawler during target testing. The decision coordinator builds Chroma queries from the normalized recon report:
+
+- `vulnerability in <service display name>`;
+- `<service_name> enumeration exploitation checklist`;
+- SPIP-specific Metasploit/public-CVE queries when SPIP is detected;
+- limited history queries after prior command output suggests credentials, root, or Meterpreter.
+
+Chroma retrieval uses `rag.top_k` per query, then deduplicates snippets and stops at `rag.max_snippets`. The current default is `top_k: 3`, `max_snippets: 6`, and `snippet_budget_chars: 2000`.
+
+The `ExploitTask.cve_id` field is optional. If the LLM sees a version-matched public vulnerability in recon facts or RAG snippets, it may set `cve_id` to `CVE-YYYY-NNNN`; the deterministic fallback tasks set `cve_id: null` and use a service-level investigation hypothesis.
+
+## LangSmith Cloud Observability
+
+Local observability remains the authoritative audit trail: every run writes `events.jsonl`, `recon_report.json`, command stdout/stderr excerpts, and final reports under `reports/<run_id>/`.
+
+LangSmith Cloud is additive. When `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` are exported, `pentestagent.main` wraps the graph invocation in a LangSmith tracing context and passes run metadata such as target IP, run ID, environment, model, retry budget, and task budget. The Anthropic client is wrapped with LangSmith's Anthropic wrapper so model calls appear as child spans when tracing is enabled.
+
+Do not put `LANGSMITH_API_KEY` in YAML. `LANGSMITH_PROJECT` and `LANGSMITH_ENDPOINT` are non-secret environment/config knobs; `LANGSMITH_ENDPOINT` is needed only for non-default LangSmith regions. Because traces may contain prompts, recon details, proposed commands, and selected command output excerpts, operators should leave tracing disabled for sensitive targets or data that should not leave the local lab.
 
 ## Implementation Notes
 
@@ -141,6 +191,7 @@ There is no separate application database in v1. Chroma's internal SQLite file i
 - Load YAML first, then apply environment-variable overrides.
 - Do not use raw nested dictionaries throughout the app; normalize into `Settings`.
 - Chroma is a normal runtime dependency because the default decision workflow can query the local knowledge base.
+- LangSmith is a normal runtime dependency because the optional cloud tracing path imports the SDK directly.
 - Keep crawler and vectorizer tooling outside runtime config until there is a supported preprocessing workflow.
 - Keep `.env.example` as documentation for environment-variable overrides, not as the primary config.
 - Add tests for config precedence:
