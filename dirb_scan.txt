@@ -1,0 +1,27 @@
+
+-----------------
+DIRB v2.22    
+By The Dark Raver
+-----------------
+
+OUTPUT_FILE: dirb_scan.txt
+START_TIME: Sat Aug  2 15:21:12 2025
+URL_BASE: http://10.201.78.209/
+WORDLIST_FILES: /usr/share/dirb/wordlists/common.txt
+
+-----------------
+
+GENERATED WORDS: 4612
+
+---- Scanning URL: http://10.201.78.209/ ----
+==> DIRECTORY: http://10.201.78.209/images/
++ http://10.201.78.209/index.html (CODE:200|SIZE:8686)
++ http://10.201.78.209/server-status (CODE:403|SIZE:278)
+
+---- Entering directory: http://10.201.78.209/images/ ----
+(!) WARNING: Directory IS LISTABLE. No need to scan it.
+    (Use mode '-w' if you want to scan it anyway)
+
+-----------------
+END_TIME: Sat Aug  2 15:45:39 2025
+DOWNLOADED: 4612 - FOUND: 2
