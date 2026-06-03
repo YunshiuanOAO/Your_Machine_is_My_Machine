@@ -1,8 +1,0 @@
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.venv/
-runs/
-scan_results_*/
-deploy_info.txt
-intr.md
