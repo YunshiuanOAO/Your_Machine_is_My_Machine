@@ -100,6 +100,8 @@ flowchart TD
 
 The important boundary is that `scripts/config_vpn.sh` and `scripts/preflight.sh` may inspect or prepare the host environment, while `pentestagent.main` only runs the agent workflow against a target reachable through the operating system route table.
 
+This remains true for planned breadth-research and CVE-scoped exploit workers. They may receive richer task schemas and local step budgets, but they still use the same operating-system route and local executor boundary; Python does not create VPN routes or manage OpenVPN.
+
 ## VPN Profile Location
 
 Local VPN profiles should go under:

@@ -37,6 +37,13 @@ For v1, the system will have one coordinator and three specialist roles:
 - `decision_coordinator`: LLM-backed planner that ranks findings and creates exploit tasks.
 - `exploit_agent`: LLM-backed worker that handles one exploit task at a time and proposes commands.
 
+The current graph should be treated as the v1 controlled-command loop, not as a fully independent multi-agent runtime. The exploit worker receives prior results for the same task, but it does not yet have a durable private scratchpad or a Claude-Code-like terminal loop.
+
+The next architecture revision introduces an explicit spawnable task contract:
+
+- `breadth_research` workers gather vulnerability intelligence across services, CVEs, public exploit references, tool output, and web/search context.
+- `exploit` workers receive one CVE or one concrete exploit hypothesis with scoped evidence, success criteria, allowed tools, and a step budget.
+
 RAG lookup, command execution, approval, and reporting will remain local services instead of separate agents unless they become complex enough to justify promotion.
 
 We will use LangGraph only as a lightweight workflow router and state container. The graph should stay small: recon, decision, exploit task loop, approval/execution, aggregation, report. LangGraph is useful here because it makes state transitions and retry routes explicit.
@@ -46,6 +53,10 @@ We will not make Claude Managed Agents the default runtime for v1. The cookbook 
 ## What "Subagent Owns Its Session" Means
 
 Each exploit subagent gets its own isolated working context for one task. It does not share a giant conversation history with other exploit attempts.
+
+In current v1 code this is implemented as graph state plus scoped prompt payloads. That gives the model limited memory through `prior_results`, command output excerpts, and report artifacts. It is enough for a safe command-proposal workflow, but it is not the same as an independent agent process with its own iterative memory.
+
+The target contract stores per-agent durable memory as `AgentMemoryItem` records keyed by task or service. Breadth-research workers write reusable facts and evidence. Exploit workers read only the memory/evidence relevant to their assigned CVE or hypothesis.
 
 An exploit-agent session contains only:
 
@@ -84,15 +95,54 @@ class ReconReport(BaseModel):
     artifacts: dict[str, str] = Field(default_factory=dict)
 
 
+class AgentBudget(BaseModel):
+    max_steps: int = 6
+    timeout_seconds: int = 900
+
+
+class AgentMemoryItem(BaseModel):
+    task_id: str
+    agent_kind: Literal["breadth_research", "exploit"]
+    summary: str
+    facts: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+
+
+class SpawnAgentTask(BaseModel):
+    task_id: str
+    agent_kind: Literal["breadth_research", "exploit"]
+    target_ip: str
+    objective: str
+    scope: list[str] = Field(default_factory=list)
+    service_name: str | None = None
+    port: int | None = None
+    cve_ids: list[str] = Field(default_factory=list)
+    hypothesis: str | None = None
+    allowed_tools: list[str] = Field(default_factory=list)
+    context_snippets: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    success_criteria: list[str] = Field(default_factory=list)
+    risk_level: Literal["low", "medium", "high"] = "low"
+    budget: AgentBudget = Field(default_factory=AgentBudget)
+    memory_key: str | None = None
+
+
 class ExploitTask(BaseModel):
     task_id: str
     target_ip: str
     service_name: str
     port: int | None = None
     cve_id: str | None = None
+    cve_ids: list[str] = Field(default_factory=list)
+    objective: str | None = None
     hypothesis: str
     confidence_score: int
     context_snippets: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    success_criteria: list[str] = Field(default_factory=list)
+    max_steps: int = 3
+    memory_key: str | None = None
 
 
 class CommandProposal(BaseModel):
@@ -124,11 +174,25 @@ class ExploitResult(BaseModel):
     next_steps: list[str] = Field(default_factory=list)
 
 
+class AgentRunResult(BaseModel):
+    task_id: str
+    agent_kind: Literal["breadth_research", "exploit"]
+    status: Literal["success", "failed", "retry", "blocked"]
+    summary: str
+    evidence: dict = Field(default_factory=dict)
+    memory_updates: list[AgentMemoryItem] = Field(default_factory=list)
+    spawned_tasks: list[SpawnAgentTask] = Field(default_factory=list)
+
+
 class PentestState(TypedDict):
     target_ip: str
     run_id: str
     retry_count: int
     max_retries: int
+    agent_tasks: list[SpawnAgentTask]
+    pending_agent_task: Optional[SpawnAgentTask]
+    agent_memory: dict[str, list[AgentMemoryItem]]
+    agent_results: list[AgentRunResult]
     recon_report: Optional[ReconReport]
     exploit_tasks: list[ExploitTask]
     command_results: list[CommandResult]
@@ -137,6 +201,14 @@ class PentestState(TypedDict):
 ```
 
 Command proposals use `tool` plus `args`, not a raw shell string. The executor is responsible for building the final command from allowlisted tools and validated arguments.
+
+The wired v1 route is still a conservative command-proposal loop. The target worker route is:
+
+```text
+recon_agent -> breadth_research_agent -> orchestrator -> exploit_agent_worker_loop -> reporter
+```
+
+In that target route, the recon agent owns host/service enumeration, the breadth-research worker owns CVE and exploit-intelligence gathering, and exploit workers receive specific `SpawnAgentTask(agent_kind="exploit")` objects. Exploit workers may run multiple approved commands within their own step budget, but they should not start with broad scanning unless their task explicitly asks for targeted validation.
 
 ## Architecture
 

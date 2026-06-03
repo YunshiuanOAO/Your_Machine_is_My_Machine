@@ -18,6 +18,9 @@ def test_build_heuristic_tasks_prefers_versioned_web_services():
     assert len(tasks) == 1
     assert tasks[0].port == 80
     assert tasks[0].context_snippets == ["context"]
+    assert tasks[0].objective
+    assert tasks[0].success_criteria
+    assert tasks[0].memory_key == tasks[0].task_id
 
 
 def test_build_rag_queries_adds_spip_context():

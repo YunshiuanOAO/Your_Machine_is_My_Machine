@@ -156,6 +156,8 @@ recon_agent -> decision_coordinator -> exploit_agent -> approval -> command_exec
 
 `runtime.max_retries` is a global retry-cycle budget for the whole run, not a per-subagent counter. The aggregator increments `retry_count` only when the latest `ExploitResult.status` is `retry`. A `failed` or `blocked` result makes that task terminal; a `success` result ends the run with a report; exhausting `max_retries` also routes to the final report.
 
+The new spawnable-agent schema adds `AgentBudget.max_steps` and `AgentBudget.timeout_seconds` for future breadth-research and exploit worker loops. Those fields describe one worker task's local budget. They do not change the wired v1 graph yet, where `max_retries` remains global and `command_seconds` caps each executed command.
+
 Effective default budgets:
 
 - `config.yaml` dev/default: `max_tasks: 3`, `max_retries: 2`, `run_timeout_seconds: 3600`, `command_seconds: 300`, `scan_seconds: 300`, `web_scan_seconds: 180`.
