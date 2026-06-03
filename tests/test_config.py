@@ -21,7 +21,7 @@ timeouts:
 execution:
   auto_approve: false
 tools:
-  allowed: [nmap, curl]
+  allowed: [rustscan, curl]
 """,
         encoding="utf-8",
     )
@@ -40,7 +40,7 @@ tools:
     assert settings.rag_snippet_budget_chars == 1234
     assert settings.langsmith_tracing is False
     assert settings.langsmith_project == "pentestagent-dev"
-    assert settings.allowed_tools == ("nmap", "curl")
+    assert settings.allowed_tools == ("rustscan", "curl")
 
 
 def test_env_specific_config_overrides_base(tmp_path):
@@ -86,7 +86,7 @@ rag:
 execution:
   auto_approve: false
 tools:
-  allowed: [nmap]
+  allowed: [rustscan]
 """,
         encoding="utf-8",
     )
@@ -99,7 +99,7 @@ tools:
             "PENTEST_RAG_TOP_K": "8",
             "PENTEST_RAG_SNIPPET_BUDGET_CHARS": "777",
             "PENTEST_AUTO_APPROVE": "true",
-            "PENTEST_ALLOWED_TOOLS": "nmap,curl",
+            "PENTEST_ALLOWED_TOOLS": "rustscan,curl",
             "LANGSMITH_TRACING": "true",
             "LANGSMITH_API_KEY": "lsv2_test",
             "LANGSMITH_PROJECT": "pentestagent-test",
@@ -112,7 +112,7 @@ tools:
     assert settings.rag_top_k == 8
     assert settings.rag_snippet_budget_chars == 777
     assert settings.auto_approve is True
-    assert settings.allowed_tools == ("nmap", "curl")
+    assert settings.allowed_tools == ("rustscan", "curl")
     assert settings.langsmith_tracing is True
     assert settings.langsmith_api_key == "lsv2_test"
     assert settings.langsmith_project == "pentestagent-test"

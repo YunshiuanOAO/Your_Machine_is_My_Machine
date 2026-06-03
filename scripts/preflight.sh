@@ -35,8 +35,8 @@ else
 fi
 
 # Runtime + dev deps must import inside the uv env.
-if uv run python -c "import chromadb, langgraph, langsmith, pydantic, yaml, xmltodict" 2>/dev/null; then
-  ok "runtime deps importable (chromadb, langgraph, langsmith, pydantic, pyyaml, xmltodict)"
+if uv run python -c "import chromadb, langgraph, langsmith, pydantic, yaml" 2>/dev/null; then
+  ok "runtime deps importable (chromadb, langgraph, langsmith, pydantic, pyyaml)"
 else
   bad "runtime deps missing. Run: uv sync"
 fi
@@ -50,7 +50,7 @@ fi
 # --- 2. External pentest tools on PATH ------------------------------------
 hdr "2. External tools on PATH"
 # Tools the scan pipeline shells out to directly:
-for t in rustscan nmap dirsearch whatweb; do
+for t in rustscan dirsearch whatweb; do
   if command -v "$t" >/dev/null 2>&1; then ok "$t"; else bad "$t not found (scan pipeline needs it)"; fi
 done
 # Tools the LLM may propose as commands (allowlisted) but not strictly required:

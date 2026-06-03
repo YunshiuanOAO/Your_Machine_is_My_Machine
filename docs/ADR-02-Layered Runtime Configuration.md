@@ -71,7 +71,6 @@ observability:
 
 tools:
   allowed:
-    - nmap
     - rustscan
     - dirsearch
     - whatweb
@@ -138,7 +137,7 @@ There is no separate application database in v1. Chroma's internal SQLite file i
 
 - `run_timeout_seconds` is a graph-level circuit breaker. If the total run exceeds this limit, the graph routes to a blocked/final-report path.
 - `timeouts.command_seconds` applies to one command execution.
-- `timeouts.scan_seconds` applies to RustScan/Nmap scan steps.
+- `timeouts.scan_seconds` applies to RustScan port-discovery steps.
 - `timeouts.web_scan_seconds` applies to Dirsearch/WhatWeb web steps.
 - `rag.top_k` and `rag.snippet_budget_chars` are hard context-budget controls. RAG should not silently expand prompt size.
 - `observability.langsmith_tracing` defaults to `false`. LangSmith Cloud tracing is opt-in and requires `LANGSMITH_API_KEY` in the environment.

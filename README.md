@@ -16,7 +16,6 @@ LLM agents propose structured commands, but only the local executor validates an
 - Chroma-backed local knowledge base dependencies
 - External tools for live Kali scans:
   - `rustscan`
-  - `nmap`
   - `dirsearch`
   - `whatweb`
   - optional proposal tools: `searchsploit`, `msfconsole`, `curl`
@@ -146,7 +145,7 @@ The preflight checks:
 - `uv`
 - Python dependencies
 - Chroma/runtime dependencies
-- `rustscan`, `nmap`, `dirsearch`, `whatweb`
+- `rustscan`, `dirsearch`, `whatweb`
 - optional proposal tools such as `searchsploit`, `msfconsole`, and `curl`
 - `config.yaml` and `config-kali.yaml`
 - shell-exported VPN interface, if running Kali/HTB
@@ -178,7 +177,7 @@ You can skip live scanning and load existing artifacts:
 uv run python -m pentestagent.main \
   -t <TARGET_IP> \
   --env kali \
-  --rustscan-file path/to/rustscan_output.json \
+  --rustscan-file path/to/rustscan_raw.txt \
   --dirsearch-file path/to/dirsearch_output.json
 ```
 
@@ -206,8 +205,6 @@ For a full scanner-backed run, `scan/` is created:
 ```text
 scan/
 ├── rustscan_raw.txt
-├── rustscan.xml
-├── rustscan_output.json
 ├── dirsearch_output.json
 └── whatweb_output.json
 ```
@@ -276,6 +273,6 @@ uv run python -m pentestagent.main -t <TARGET_IP> --env kali
 - Chroma import failure: run `uv sync`.
 - Knowledge-base failure: confirm `my_knowledge_base/` exists and contains the expected Chroma collection.
 - LangSmith warning: export `LANGSMITH_API_KEY` only when `LANGSMITH_TRACING=true`; otherwise cloud tracing is intentionally disabled.
-- Terminal stopped showing typed characters after an interrupted hidden prompt: run `stty sane`.
+- Terminal stopped showing typed characters after an interrupted hidden prompt or approval prompt: run `stty sane`.
 
 Only run this against systems where you have explicit authorization.

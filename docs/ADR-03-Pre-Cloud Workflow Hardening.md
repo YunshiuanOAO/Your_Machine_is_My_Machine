@@ -72,7 +72,7 @@ First live runs should not use `--auto-approve`; every generated `CommandProposa
 - `uv` is installed;
 - core Python dependencies import;
 - runtime Chroma and dev dependencies import after `uv sync --group dev`;
-- hard-required scan tools are on `PATH`: `rustscan`, `nmap`, `dirsearch`, `whatweb`;
+- hard-required scan tools are on `PATH`: `rustscan`, `dirsearch`, `whatweb`;
 - allowlisted but optional proposal tools are present or warned: `searchsploit`, `msfconsole`, `curl`;
 - `config.yaml` and `config-kali.yaml` are present;
 - the configured wordlist path exists;

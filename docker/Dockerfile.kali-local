@@ -9,7 +9,7 @@ ARG RUSTSCAN_VERSION=2.4.1
 RUN apt-get update && apt-get install -y --no-install-recommends \
         openssh-server \
         openvpn iproute2 iputils-ping net-tools \
-        nmap dirsearch whatweb \
+        dirsearch whatweb \
         curl ca-certificates git locales python3 python3-pip unzip \
     && sed -i 's/^# *\(en_US.UTF-8 UTF-8\)/\1/' /etc/locale.gen \
     && locale-gen \

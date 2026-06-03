@@ -27,8 +27,8 @@ def test_execute_command_blocks_shell_metacharacters(tmp_path):
     proposal = CommandProposal(
         task_id="task_1",
         action_type="enumerate",
-        tool="nmap",
-        args=["[TARGET_IP];id"],
+        tool="rustscan",
+        args=["-a", "[TARGET_IP];id"],
         risk_level="high",
         reasoning="test",
         expected_success_signal="none",

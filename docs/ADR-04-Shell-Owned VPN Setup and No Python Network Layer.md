@@ -8,7 +8,7 @@ Status: Proposed
 
 Kali/HTB runs need the VM to establish a VPN route before scanning a target. Starting OpenVPN, checking Linux interfaces, using `sudo`, and managing routes are operating-system concerns. They are easier to inspect and debug in shell scripts.
 
-The Python agent does not need to configure networking. For v1 it only needs a target IP. Once the VPN route exists, tools such as RustScan, Nmap, Dirsearch, WhatWeb, curl, searchsploit, and msfconsole use the operating system route table.
+The Python agent does not need to configure networking. For v1 it only needs a target IP. Once the VPN route exists, tools such as RustScan, Dirsearch, WhatWeb, curl, searchsploit, and msfconsole use the operating system route table.
 
 We briefly considered a Python `pentestagent/networking/` package for VPN/LHOST placeholder context, but that adds another layer without a current runtime need.
 
@@ -60,7 +60,7 @@ flowchart TD
     PREFLIGHT["scripts/preflight.sh<br/>deps, tools, VPN interface, KB, tests"]:::shell
     READY{"preflight ok?"}:::decision
     MAIN["python -m pentestagent.main<br/>target IP + --env kali"]:::python
-    RECON["Recon Agent<br/>RustScan -> Nmap -> Dirsearch/WhatWeb"]:::agent
+    RECON["Recon Agent<br/>RustScan -> Dirsearch/WhatWeb"]:::agent
     DECISION["Decision Coordinator<br/>rank findings + create tasks"]:::agent
     EXPLOIT["Exploit Agent<br/>one task, propose command"]:::agent
     APPROVAL["Human Approval"]:::human
@@ -230,13 +230,13 @@ apt-get update
 apt-get install -y exploitdb metasploit-framework
 ```
 
-If the terminal stops showing typed characters after interrupting a hidden secret prompt, reset the terminal:
+If the terminal stops showing typed characters after interrupting a hidden secret prompt or while the Python approval prompt is waiting for input, reset the terminal:
 
 ```bash
 stty sane
 ```
 
-`scripts/config_secrets.sh` uses the shell's silent `read` path for Bash/Zsh so Ctrl+C should restore the terminal cleanly, but `stty sane` is the recovery command for any shell left in no-echo mode.
+`scripts/config_secrets.sh` uses the shell's silent `read` path for Bash/Zsh so Ctrl+C should restore the terminal cleanly. The Python approval prompt also performs a best-effort echo restore before asking for `yes/no`, but `stty sane` is the recovery command for any shell left in no-echo mode.
 
 ## Consequences
 

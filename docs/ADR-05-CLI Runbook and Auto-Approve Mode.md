@@ -154,7 +154,7 @@ Run with existing scan artifacts:
 uv run python -m pentestagent.main \
   -t <TARGET_IP> \
   --env kali \
-  --rustscan-file path/to/rustscan_output.json \
+  --rustscan-file path/to/rustscan_raw.txt \
   --dirsearch-file path/to/dirsearch_output.json
 ```
 
@@ -231,7 +231,7 @@ The Python CLI is `uv run python -m pentestagent.main`.
 
 - `-t`, `--target`: required target IP or host.
 - `--env`: config environment name, such as `dev` or `kali`.
-- `--rustscan-file`: use an existing RustScan/Nmap JSON artifact.
+- `--rustscan-file`: use an existing RustScan raw text artifact.
 - `--dirsearch-file`: use an existing Dirsearch JSON artifact.
 - `--skip-scan`: do not run the scanner when artifacts are missing.
 - `--auto-approve`: approve generated command proposals without prompting.

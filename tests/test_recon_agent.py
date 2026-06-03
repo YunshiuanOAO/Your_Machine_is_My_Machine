@@ -5,30 +5,24 @@ from pentestagent.tools.rustscan import parse_open_ports
 from pentestagent.tools.scan_runner import select_web_ports
 
 
-def test_parse_rustscan_results_extracts_single_service():
-    data = {
-        "nmaprun": {
-            "host": {
-                "ports": {
-                    "port": {
-                        "@portid": "80",
-                        "service": {
-                            "@name": "http",
-                            "@product": "Apache httpd",
-                            "@version": "2.4.54",
-                        },
-                    }
-                }
-            }
-        }
-    }
-
-    services, notes = parse_rustscan_results(data)
+def test_parse_rustscan_results_extracts_ports_from_raw_output():
+    services, notes = parse_rustscan_results(
+        """
+        Open 10.10.10.10:22
+        Open 10.10.10.10:80
+        """
+    )
 
     assert notes == []
-    assert len(services) == 1
-    assert services[0].port == 80
-    assert services[0].display_name == "http Apache httpd 2.4.54"
+    assert [service.port for service in services] == [22, 80]
+    assert [service.service_name for service in services] == ["ssh", "http"]
+
+
+def test_parse_rustscan_results_rejects_json_artifact():
+    services, notes = parse_rustscan_results('{"ports": [80]}')
+
+    assert services == []
+    assert notes == ["RustScan artifact must be raw text in RustScan-only mode."]
 
 
 def test_parse_dirsearch_results_keeps_interesting_paths():
