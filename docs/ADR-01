@@ -306,6 +306,29 @@ Implemented migration mapping:
 - Claude JSON calls live in `services/llm.py`.
 - command validation/execution lives in `services/executor.py`.
 
+## Output Structure
+
+Generated run output must live under `reports/<run_id>/`. Root-level scan outputs such as `rustscan_output.json`, `dirsearch_output.json`, `network_discovery.txt`, and old `results/agent_state_turn_*.json` files are legacy artifacts and should not be produced by the package.
+
+```text
+reports/<run_id>/
+├── events.jsonl
+├── recon_report.json
+├── final_report.json
+├── final_report.md
+├── scan/
+│   ├── rustscan_raw.txt
+│   ├── rustscan.xml
+│   ├── rustscan_output.json
+│   ├── dirsearch_output.json
+│   └── whatweb_output.json
+└── commands/
+    ├── <command_id>.stdout.txt
+    └── <command_id>.stderr.txt
+```
+
+`observability/artifacts.py` owns run-scoped paths and artifact writes. `observability/logger.py` owns the chronological JSONL event log.
+
 ## Alternatives Considered
 
 ### Keep the current single-loop agent
