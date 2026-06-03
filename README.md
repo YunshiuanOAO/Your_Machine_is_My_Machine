@@ -56,6 +56,15 @@ config-kali.yaml
 
 The Kali config uses longer scan timeouts, keeps human approval enabled, and keeps exploit dispatch sequential for v1.
 
+VPN setup is intentionally outside Python. Put local VPN profiles under the gitignored `vpn/` directory, then use the shell helper before running the agent:
+
+```bash
+./scripts/config_vpn.sh vpn/machines_us-3.ovpn tun0
+source .pentestagent-vpn.env
+```
+
+The agent itself only receives the target IP. Linux routing through the VPN makes the target reachable.
+
 ## Test Locally
 
 Run the unit suite:
@@ -94,7 +103,16 @@ uv sync --extra rag
 export ANTHROPIC_API_KEY="..."
 ```
 
-4. Run the executable preflight:
+4. Put your `.ovpn` profile under `vpn/`, then start/check the HTB VPN:
+
+```bash
+./scripts/config_vpn.sh vpn/machines_us-3.ovpn tun0
+source .pentestagent-vpn.env
+```
+
+The shell script owns VPN setup. Python does not configure VPN, routes, interfaces, or LHOST.
+
+5. Run the executable preflight:
 
 ```bash
 ./scripts/preflight.sh
@@ -108,12 +126,13 @@ The preflight checks:
 - `rustscan`, `nmap`, `dirsearch`, `whatweb`
 - optional proposal tools such as `searchsploit`, `msfconsole`, and `curl`
 - `config.yaml` and `config-kali.yaml`
+- shell-exported VPN interface, if running Kali/HTB
 - configured wordlist path
 - Chroma knowledge base
 - `ANTHROPIC_API_KEY`
 - the pytest suite
 
-5. First live run, without auto-approval:
+6. First live run, without auto-approval:
 
 ```bash
 uv run python -m pentestagent.main -t <TARGET_IP> --env kali
@@ -203,11 +222,29 @@ Override retry budget:
 uv run python -m pentestagent.main -t <TARGET_IP> --env kali --max-retries 6
 ```
 
+## VPN Profiles
+
+Use `vpn/` for local `.ovpn` files:
+
+```text
+vpn/
+└── machines_us-3.ovpn
+```
+
+The directory is kept in the repo with `vpn/.gitkeep`, but its contents are ignored. This is the future-friendly path for an uploaded VPN profile plus target IP:
+
+```bash
+./scripts/config_vpn.sh vpn/<uploaded>.ovpn tun0
+source .pentestagent-vpn.env
+uv run python -m pentestagent.main -t <TARGET_IP> --env kali
+```
+
 ## Troubleshooting
 
 - No `scan/` directory: the run used `--skip-scan`, supplied artifact files, or ended before the scanner flow started.
 - No `commands/` directory: no exploit task produced an executable command, or the run ended after recon/decision.
 - `Tool not found on PATH`: install the missing Kali tool and re-run `./scripts/preflight.sh`.
+- VPN interface missing: run `./scripts/config_vpn.sh vpn/<profile>.ovpn tun0`, then `source .pentestagent-vpn.env`.
 - RAG import failure: run `uv sync --extra rag`.
 - Knowledge-base failure: confirm `my_knowledge_base/` exists and contains the expected Chroma collection.
 

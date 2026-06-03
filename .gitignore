@@ -180,6 +180,12 @@ ENV/
 env.bak/
 venv.bak/
 
+# Project-local secrets and VPN profiles
+*.ovpn
+.pentestagent-vpn.env
+vpn/*
+!vpn/.gitkeep
+
 # Spyder project settings
 .spyderproject
 .spyproject

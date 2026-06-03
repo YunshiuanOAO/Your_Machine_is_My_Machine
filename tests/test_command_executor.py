@@ -40,3 +40,22 @@ def test_execute_command_blocks_shell_metacharacters(tmp_path):
     assert result.return_code is None
     assert "blocked" in result.summary.lower()
 
+
+def test_build_argv_replaces_target_placeholder():
+    proposal = CommandProposal(
+        task_id="task_1",
+        action_type="enumerate",
+        tool="curl",
+        args=["http://[TARGET_IP]/"],
+        risk_level="low",
+        reasoning="test",
+        expected_success_signal="none",
+    )
+
+    argv = build_argv(
+        proposal,
+        "10.10.10.5",
+        Settings(allowed_tools=("curl",)),
+    )
+
+    assert argv == ["curl", "http://10.10.10.5/"]

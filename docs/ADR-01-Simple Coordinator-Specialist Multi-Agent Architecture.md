@@ -305,6 +305,7 @@ Implemented migration mapping:
 - RAG lookup lives in `services/rag.py`.
 - Claude JSON calls live in `services/llm.py`.
 - command validation/execution lives in `services/executor.py`.
+- VPN setup is shell-owned through `scripts/config_vpn.sh`; Python receives only the target IP and relies on OS routing.
 
 ## Output Structure
 

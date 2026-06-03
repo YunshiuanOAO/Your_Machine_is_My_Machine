@@ -80,8 +80,40 @@ else
   warn "could not resolve wordlist path from Settings"
 fi
 
-# --- 5. Knowledge base + secret -------------------------------------------
-hdr "5. Knowledge base & secrets"
+# --- 5. VPN shell context --------------------------------------------------
+hdr "5. VPN shell context"
+VPN_IFACE="${PENTEST_VPN_INTERFACE:-}"
+LHOST="${PENTEST_LHOST:-}"
+
+if [ -z "$VPN_IFACE" ] && [ "$ENV_NAME" = "kali" ]; then
+  VPN_IFACE="tun0"
+  warn "PENTEST_VPN_INTERFACE not set; checking Kali default: $VPN_IFACE"
+fi
+
+if [ -n "$VPN_IFACE" ]; then
+  if command -v ip >/dev/null 2>&1; then
+    if ip link show "$VPN_IFACE" >/dev/null 2>&1; then
+      ok "VPN interface exists: $VPN_IFACE"
+    elif [ "$ENV_NAME" = "kali" ]; then
+      bad "VPN interface not found: $VPN_IFACE. Run scripts/config_vpn.sh and source .pentestagent-vpn.env"
+    else
+      warn "VPN interface not found: $VPN_IFACE"
+    fi
+  else
+    warn "ip command not found; cannot verify VPN interface $VPN_IFACE"
+  fi
+else
+  warn "VPN interface not configured; skipping VPN interface check"
+fi
+
+if [ -n "$LHOST" ]; then
+  ok "LHOST configured: $LHOST"
+else
+  warn "PENTEST_LHOST not set; run scripts/config_vpn.sh if callback tooling needs it"
+fi
+
+# --- 6. Knowledge base + secret -------------------------------------------
+hdr "6. Knowledge base & secrets"
 if uv run pytest tests/test_knowledge_base.py -q >/dev/null 2>&1; then
   ok "knowledge base validated (chroma store + collection present)"
 else
@@ -94,8 +126,8 @@ else
   warn "ANTHROPIC_API_KEY not set (required unless you run with --no-llm)"
 fi
 
-# --- 6. Test suite ---------------------------------------------------------
-hdr "6. Test suite"
+# --- 7. Test suite ---------------------------------------------------------
+hdr "7. Test suite"
 if uv run pytest -q >/dev/null 2>&1; then
   ok "pytest suite passes"
 else

@@ -107,4 +107,3 @@ tools:
     assert settings.rag_snippet_budget_chars == 777
     assert settings.auto_approve is True
     assert settings.allowed_tools == ("nmap", "curl")
-

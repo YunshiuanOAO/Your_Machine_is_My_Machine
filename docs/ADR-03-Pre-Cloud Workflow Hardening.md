@@ -47,6 +47,8 @@ Before running against an HTB target on Kali:
 ```text
 uv sync --extra rag
 export ANTHROPIC_API_KEY=...
+./scripts/config_vpn.sh vpn/machines_us-3.ovpn tun0
+source .pentestagent-vpn.env
 ./scripts/preflight.sh
 uv run python -m pentestagent.main -t <TARGET> --env kali
 ```
@@ -62,6 +64,7 @@ First live runs should not use `--auto-approve`; every generated `CommandProposa
 - allowlisted but optional proposal tools are present or warned: `searchsploit`, `msfconsole`, `curl`;
 - `config.yaml` and `config-kali.yaml` are present;
 - the configured wordlist path exists;
+- the shell-exported VPN interface exists for Kali/HTB runs;
 - the configured knowledge base validates through `tests/test_knowledge_base.py`;
 - `ANTHROPIC_API_KEY` is set, unless the run will use `--no-llm`;
 - the full pytest suite passes.
@@ -103,6 +106,7 @@ The expected coverage includes:
 Kali-specific validation also includes:
 
 ```text
+bash -n scripts/config_vpn.sh
 bash -n scripts/preflight.sh
 bash -n scripts/msfinstall.sh
 ```
