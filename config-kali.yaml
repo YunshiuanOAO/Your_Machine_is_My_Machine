@@ -1,0 +1,24 @@
+# Kali/HTB environment overrides.
+# Layered on top of config.yaml (see ADR-02). Only override what differs.
+runtime:
+  env: kali
+  # Global retry-cycle budget for the whole run. Bumped above the dev default
+  # so multi-service targets get more exploration before the run reports out.
+  max_retries: 4
+  run_timeout_seconds: 3600
+
+observability:
+  langsmith_project: pentestagent-kali
+
+timeouts:
+  # Full-range RustScan scans against a live HTB box are slower than a local
+  # lab target; give them more headroom.
+  scan_seconds: 600
+  command_seconds: 300
+  web_scan_seconds: 300
+
+execution:
+  # Keep human approval on for live targets. Interactive stays off in v1.
+  auto_approve: false
+  allow_interactive: false
+  exploit_dispatch: sequential

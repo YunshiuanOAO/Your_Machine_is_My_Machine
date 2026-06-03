@@ -1,0 +1,63 @@
+# Local Kali attack box for HTB testing of pentestagent.
+# Supports Docker Desktop on arm64 and x86_64 hosts.
+FROM kalilinux/kali-rolling
+
+ENV DEBIAN_FRONTEND=noninteractive
+ARG RUSTSCAN_VERSION=2.4.1
+
+# Scan pipeline tools + ssh + vpn + python toolchain.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        openssh-server \
+        openvpn iproute2 iputils-ping net-tools \
+        dirsearch whatweb \
+        curl ca-certificates git locales python3 python3-pip unzip \
+    && sed -i 's/^# *\(en_US.UTF-8 UTF-8\)/\1/' /etc/locale.gen \
+    && locale-gen \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+
+# RustScan is not available from the current Kali arm64 apt repositories.
+# Install a pinned upstream release for both Apple Silicon and Intel hosts.
+RUN set -eux; \
+    arch="$(uname -m)"; \
+    mkdir -p /tmp/rustscan; \
+    case "$arch" in \
+        aarch64|arm64) \
+            asset="aarch64-linux-rustscan.zip"; \
+            curl -fsSL "https://github.com/bee-san/RustScan/releases/download/${RUSTSCAN_VERSION}/${asset}" -o /tmp/rustscan.zip; \
+            unzip -q /tmp/rustscan.zip -d /tmp/rustscan; \
+            ;; \
+        x86_64|amd64) \
+            asset="x86_64-linux-rustscan.tar.gz.zip"; \
+            curl -fsSL "https://github.com/bee-san/RustScan/releases/download/${RUSTSCAN_VERSION}/${asset}" -o /tmp/rustscan.zip; \
+            unzip -q /tmp/rustscan.zip -d /tmp/rustscan; \
+            tar -xzf /tmp/rustscan/x86_64-linux-rustscan.tar.gz -C /tmp/rustscan; \
+            ;; \
+        *) \
+            echo "Unsupported RustScan architecture: $arch" >&2; \
+            exit 1; \
+            ;; \
+    esac; \
+    install -m 0755 /tmp/rustscan/rustscan /usr/local/bin/rustscan; \
+    rm -rf /tmp/rustscan /tmp/rustscan.zip; \
+    rustscan -V
+
+# Optional heavy tools the LLM may propose. Uncomment to bake them in
+# (large download). Otherwise install on demand or via scripts/msfinstall.sh.
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#         metasploit-framework exploitdb \
+#     && rm -rf /var/lib/apt/lists/*
+
+# uv, installed system-wide so SSH sessions find it on PATH.
+RUN curl -LsSf https://astral.sh/uv/install.sh \
+    | env UV_INSTALL_DIR=/usr/local/bin INSTALLER_NO_MODIFY_PATH=1 sh
+
+RUN mkdir -p /var/run/sshd /root/.ssh && chmod 700 /root/.ssh
+
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+EXPOSE 22
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

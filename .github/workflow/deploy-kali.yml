@@ -1,0 +1,88 @@
+name: CI and Deploy to Kali
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: python -m pip install pytest
+
+      - name: Run unit tests
+        run: python -m pytest tests
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: kali
+    env:
+      TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Connect to Tailscale
+        if: ${{ env.TAILSCALE_AUTHKEY != '' }}
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ env.TAILSCALE_AUTHKEY }}
+          ping: ${{ secrets.KALI_HOST }}
+
+      - name: Prepare SSH
+        env:
+          KALI_HOST: ${{ secrets.KALI_HOST }}
+          KALI_PORT: ${{ secrets.KALI_PORT }}
+          KALI_SSH_KEY: ${{ secrets.KALI_SSH_KEY }}
+        run: |
+          test -n "$KALI_HOST"
+          test -n "$KALI_SSH_KEY"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$KALI_SSH_KEY" > ~/.ssh/kali_deploy_key
+          chmod 600 ~/.ssh/kali_deploy_key
+          ssh-keyscan -p "${KALI_PORT:-22}" "$KALI_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync repository to Kali
+        env:
+          KALI_HOST: ${{ secrets.KALI_HOST }}
+          KALI_PORT: ${{ secrets.KALI_PORT }}
+          KALI_USER: ${{ secrets.KALI_USER }}
+          KALI_DEPLOY_PATH: ${{ secrets.KALI_DEPLOY_PATH }}
+        run: |
+          test -n "$KALI_USER"
+          test -n "$KALI_DEPLOY_PATH"
+          ssh -i ~/.ssh/kali_deploy_key -p "${KALI_PORT:-22}" "$KALI_USER@$KALI_HOST" "mkdir -p '$KALI_DEPLOY_PATH'"
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/kali_deploy_key -p ${KALI_PORT:-22}" \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.pytest_cache/' \
+            --exclude '__pycache__/' \
+            --exclude 'runs/' \
+            --exclude 'scan_results_*/' \
+            --exclude 'my_pentest_db/' \
+            ./ "$KALI_USER@$KALI_HOST:$KALI_DEPLOY_PATH/"
+
+      - name: Run Kali deploy hook
+        env:
+          KALI_HOST: ${{ secrets.KALI_HOST }}
+          KALI_PORT: ${{ secrets.KALI_PORT }}
+          KALI_USER: ${{ secrets.KALI_USER }}
+          KALI_DEPLOY_PATH: ${{ secrets.KALI_DEPLOY_PATH }}
+        run: |
+          ssh -i ~/.ssh/kali_deploy_key -p "${KALI_PORT:-22}" "$KALI_USER@$KALI_HOST" \
+            "cd '$KALI_DEPLOY_PATH' && bash scripts/deploy_kali.sh"

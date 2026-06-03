@@ -1,0 +1,34 @@
+# Local Kali attack box for HTB testing.
+#   docker compose up -d --build
+#   ssh -p 2222 root@localhost          # password: kali (or mount a key, see below)
+#
+# Inside the box the project is at /app (live-mounted from this directory).
+services:
+  kali:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.kali-local
+    image: pentest-kali
+    container_name: pentest-kali
+    hostname: kali
+    # Needed for the OpenVPN tunnel to HTB.
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - "/dev/net/tun:/dev/net/tun"
+    # SSH exposed on localhost:2222 only (not your LAN).
+    ports:
+      - "127.0.0.1:2222:22"
+    environment:
+      - ROOT_PASSWORD=kali
+    volumes:
+      # Live project mount: edits on your Mac appear in the container.
+      - ./:/app
+      # Recommended: key-based SSH. Uncomment and point at YOUR public key.
+      # If the file doesn't exist Docker will silently create a directory, so
+      # only enable this once the key is present.
+      # - ${HOME}/.ssh/id_ed25519.pub:/tmp/authorized_keys:ro
+      # Drop your HTB connection pack at ./vpn/lab.ovpn to use it in the box.
+      # - ./vpn/lab.ovpn:/root/lab.ovpn:ro
+    working_dir: /app
+    restart: unless-stopped

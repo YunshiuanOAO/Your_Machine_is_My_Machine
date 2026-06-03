@@ -1,0 +1,7 @@
+runtime:
+  env: dev
+
+execution:
+  auto_approve: false
+  exploit_dispatch: sequential
+
