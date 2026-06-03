@@ -62,7 +62,7 @@ In v1 this "session" can be implemented locally as a per-task prompt/context obj
 
 ## State And Message Protocol
 
-The project owns the message schema. Agents may propose commands, but only local validation, human approval, and `pentestagent/services/executor.py` may execute them.
+The project owns the message schema. Agents may propose commands, but only local validation, the approval gate, and `pentestagent/services/executor.py` may execute them. Human approval is the default; explicit auto-approve mode is documented separately in ADR-05.
 
 ```python
 from typing import Literal, Optional, TypedDict
@@ -214,7 +214,7 @@ sequenceDiagram
 - Keep RAG as a service function that returns short snippets. Do not pass large document dumps into every agent.
 - Keep one LLM adapter module so the rest of the project does not depend directly on Anthropic SDK details.
 - Keep command execution local. LLM agents propose `CommandProposal`; they never execute shell commands directly.
-- Keep human approval before every target-affecting command in v1.
+- Keep human approval before target-affecting commands by default. Auto-approve mode must remain explicit through `--auto-approve` or `PENTEST_AUTO_APPROVE=true`.
 - Use a per-task exploit-agent context file or log so failures are debuggable without polluting global state.
 - Add new agents only when a role needs its own prompt, context, tool scope, and output schema.
 
@@ -375,7 +375,7 @@ Positive:
 - Smaller prompts and cleaner context boundaries.
 - Easier testing because each role has a typed input and output.
 - Less duplicated reasoning because the coordinator handles routing and specialists handle work.
-- Safer execution because commands pass through schema validation and human approval.
+- Safer execution because commands pass through schema validation, the approval gate, and executor checks.
 - Simpler migration path from the current codebase.
 
 Negative:
@@ -388,7 +388,7 @@ Negative:
 ## Guardrails
 
 - Use only on authorized lab, CTF, class, or owned targets.
-- All target-affecting commands require human approval in v1.
+- Target-affecting commands require the approval gate in v1. The default gate prompts a human; explicit auto-approve mode may skip the prompt but not executor validation.
 - The executor must validate tool names and arguments before running anything.
 - Interactive commands are blocked in v1; add them later only behind explicit TTY/session handling and stronger operator controls.
 - The graph should fail closed when an agent returns malformed output.

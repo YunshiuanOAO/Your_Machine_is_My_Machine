@@ -170,6 +170,8 @@ uv run python -m pentestagent.main -t <TARGET_IP> --env kali
 
 `scripts/config_secrets.sh` must be sourced because a normal executed script cannot export variables back into the parent shell. It prompts with hidden input for API keys, exports only into the current shell, and does not write secrets to disk.
 
+For Kali/HTB runs, preflight should run after both secret exports and VPN exports are present in the shell. The order is: source `scripts/config_secrets.sh`, run `scripts/config_vpn.sh`, source `.pentestagent-vpn.env`, then run `scripts/preflight.sh`.
+
 LangSmith Cloud tracing is optional. When enabled, traces can include prompts, recon summaries, command proposals, and selected command output excerpts. Leave `LANGSMITH_TRACING` unset or `false` for runs that must stay local-only.
 
 If the VPN profile should be read from outside `/app`, mount it explicitly in `docker-compose.yml`, for example `./vpn/lab.ovpn:/root/lab.ovpn:ro`, then run `./scripts/config_vpn.sh /root/lab.ovpn tun0` inside the container.

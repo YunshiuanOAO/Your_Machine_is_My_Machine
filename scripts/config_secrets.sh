@@ -202,6 +202,15 @@ else
 fi
 
 printf '\nReady for this shell. Next:\n'
-printf '  ./scripts/preflight.sh\n'
+case "$env_name" in
+  kali)
+    printf '  ./scripts/config_vpn.sh vpn/<profile>.ovpn tun0\n'
+    printf '  source .pentestagent-vpn.env\n'
+    printf '  ./scripts/preflight.sh\n'
+    ;;
+  *)
+    printf '  ./scripts/preflight.sh\n'
+    ;;
+esac
 
 _config_secrets_cleanup

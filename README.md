@@ -45,6 +45,12 @@ Or use the prompt helper so pasted secrets are hidden and not written to shell h
 source scripts/config_secrets.sh
 ```
 
+For Kali/HTB runs, source it with the Kali environment so it prints the VPN setup reminder:
+
+```bash
+ENV=kali source scripts/config_secrets.sh
+```
+
 Optional LangSmith Cloud tracing:
 
 ```bash
@@ -161,6 +167,8 @@ Review each proposed command before approving it. After you trust the behavior i
 ```bash
 uv run python -m pentestagent.main -t <TARGET_IP> --env kali --auto-approve
 ```
+
+See `docs/ADR-05-CLI Runbook and Auto-Approve Mode.md` for the full CLI command catalog and approval-mode rules.
 
 ## Using Existing Scan Artifacts
 
