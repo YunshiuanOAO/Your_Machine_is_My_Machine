@@ -40,12 +40,14 @@ Interactive execution remains disabled in v1. A future ADR should define a TTY/s
 
 The preflight script checks whether Metasploit is available but does not install or configure it automatically. If Metasploit is missing on Kali, the operator may run `scripts/msfinstall.sh` manually with appropriate privileges.
 
+Knowledge-base validation means validating the already-built Chroma store configured by `paths.knowledge_base_path`. Preflight must not crawl websites, rebuild chunks, generate embeddings, or mutate the knowledge base as part of target testing. The crawler/vectorizer files under `crawled-data/tmp/` are development preprocessing tools only.
+
 ## Kali/HTB Preflight
 
 Before running against an HTB target on Kali:
 
 ```text
-uv sync --extra rag
+uv sync --group dev
 export ANTHROPIC_API_KEY=...
 ./scripts/config_vpn.sh vpn/machines_us-3.ovpn tun0
 source .pentestagent-vpn.env
@@ -59,13 +61,14 @@ First live runs should not use `--auto-approve`; every generated `CommandProposa
 
 - `uv` is installed;
 - core Python dependencies import;
-- RAG dependencies import after `uv sync --extra rag`;
+- runtime Chroma and dev dependencies import after `uv sync --group dev`;
 - hard-required scan tools are on `PATH`: `rustscan`, `nmap`, `dirsearch`, `whatweb`;
 - allowlisted but optional proposal tools are present or warned: `searchsploit`, `msfconsole`, `curl`;
 - `config.yaml` and `config-kali.yaml` are present;
 - the configured wordlist path exists;
 - the shell-exported VPN interface exists for Kali/HTB runs;
 - the configured knowledge base validates through `tests/test_knowledge_base.py`;
+- crawler/preprocessing scripts are not required for runtime preflight;
 - `ANTHROPIC_API_KEY` is set, unless the run will use `--no-llm`;
 - the full pytest suite passes.
 

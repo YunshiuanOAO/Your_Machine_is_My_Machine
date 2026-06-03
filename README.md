@@ -12,7 +12,7 @@ LLM agents propose structured commands, but only the local executor validates an
 
 - Python managed with `uv`
 - An Anthropic API key for LLM-backed runs
-- Optional RAG dependencies when using the local Chroma knowledge base
+- Chroma-backed local knowledge base dependencies
 - External tools for live Kali scans:
   - `rustscan`
   - `nmap`
@@ -26,10 +26,10 @@ LLM agents propose structured commands, but only the local executor validates an
 uv sync
 ```
 
-For RAG-backed runs:
+For full local/preflight runs, include dev tools:
 
 ```bash
-uv sync --extra rag
+uv sync --group dev
 ```
 
 Set your API key:
@@ -94,7 +94,7 @@ Use Kali or a Kali-like VM for live HTB testing because the scanner flow depends
 2. Install Python dependencies:
 
 ```bash
-uv sync --extra rag
+uv sync --group dev
 ```
 
 3. Confirm your secret is available:
@@ -122,7 +122,7 @@ The preflight checks:
 
 - `uv`
 - Python dependencies
-- RAG dependencies
+- Chroma/runtime dependencies
 - `rustscan`, `nmap`, `dirsearch`, `whatweb`
 - optional proposal tools such as `searchsploit`, `msfconsole`, and `curl`
 - `config.yaml` and `config-kali.yaml`
@@ -245,7 +245,7 @@ uv run python -m pentestagent.main -t <TARGET_IP> --env kali
 - No `commands/` directory: no exploit task produced an executable command, or the run ended after recon/decision.
 - `Tool not found on PATH`: install the missing Kali tool and re-run `./scripts/preflight.sh`.
 - VPN interface missing: run `./scripts/config_vpn.sh vpn/<profile>.ovpn tun0`, then `source .pentestagent-vpn.env`.
-- RAG import failure: run `uv sync --extra rag`.
+- Chroma import failure: run `uv sync`.
 - Knowledge-base failure: confirm `my_knowledge_base/` exists and contains the expected Chroma collection.
 
 Only run this against systems where you have explicit authorization.

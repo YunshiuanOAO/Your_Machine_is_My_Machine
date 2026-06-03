@@ -302,10 +302,20 @@ Implemented migration mapping:
 - CLI and graph invocation live in `pentestagent/main.py`.
 - recon execution lives in `tools/scan_runner.py` and dedicated tool wrappers.
 - scan artifact parsing lives in `tools/parsers.py`.
-- RAG lookup lives in `services/rag.py`.
+- RAG lookup lives in `services/rag.py` and reads an existing Chroma persistent store.
 - Claude JSON calls live in `services/llm.py`.
 - command validation/execution lives in `services/executor.py`.
 - VPN setup is shell-owned through `scripts/config_vpn.sh`; Python receives only the target IP and relies on OS routing.
+
+## Runtime Data Boundary
+
+The v1 runtime has one database-backed input: the prebuilt Chroma knowledge base configured by `paths.knowledge_base_path` and `rag.collection_name`. `services/rag.py` opens that existing store with `chromadb.PersistentClient`, fetches the configured collection, and returns bounded context snippets to the decision coordinator.
+
+The runtime does not own crawling, scraping, chunking, embedding generation, or knowledge-base rebuilding. Files under `crawled-data/tmp/` are development/preprocessing artifacts used while preparing or experimenting with knowledge-base content. They are not imported by `pentestagent`, not invoked by `pentestagent.main`, and not part of the LangGraph workflow.
+
+SQLite usage is limited to Chroma internals (`my_knowledge_base/chroma.sqlite3`) and validation tests that inspect the Chroma metadata. The application does not maintain a separate relational database for runs, state, reports, or crawler output. Run state and audit output stay file-based under `reports/<run_id>/`.
+
+If crawler or vectorizer tooling becomes a supported operator workflow, it should be promoted into a separate documented preprocessing command and ADR. It should not be hidden inside the live target workflow.
 
 ## Output Structure
 

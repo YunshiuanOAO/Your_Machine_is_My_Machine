@@ -34,17 +34,17 @@ else
   bad "uv not found on PATH. Install: https://docs.astral.sh/uv/"
 fi
 
-# Core + RAG deps must import inside the uv env.
-if uv run python -c "import langgraph, pydantic, yaml, xmltodict" 2>/dev/null; then
-  ok "core deps importable (langgraph, pydantic, pyyaml, xmltodict)"
+# Runtime + dev deps must import inside the uv env.
+if uv run python -c "import chromadb, langgraph, pydantic, yaml, xmltodict" 2>/dev/null; then
+  ok "runtime deps importable (chromadb, langgraph, pydantic, pyyaml, xmltodict)"
 else
-  bad "core deps missing. Run: uv sync"
+  bad "runtime deps missing. Run: uv sync"
 fi
 
-if uv run python -c "import chromadb, sentence_transformers" 2>/dev/null; then
-  ok "RAG deps importable (chromadb, sentence-transformers)"
+if uv run python -c "import pytest" 2>/dev/null; then
+  ok "dev deps importable (pytest)"
 else
-  bad "RAG deps missing. Run: uv sync --extra rag"
+  bad "dev deps missing. Run: uv sync --group dev"
 fi
 
 # --- 2. External pentest tools on PATH ------------------------------------

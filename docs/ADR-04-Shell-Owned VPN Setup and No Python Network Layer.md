@@ -29,7 +29,7 @@ VPN setup belongs to shell scripts.
 The project will provide `scripts/config_vpn.sh` as a thin Kali helper:
 
 - accepts an `.ovpn` profile path and an optional interface name;
-- starts OpenVPN with `sudo openvpn` only when the interface is not already present;
+- starts OpenVPN when the interface is not already present, using direct `openvpn` as root or `sudo openvpn` as a non-root user;
 - waits for the expected interface;
 - resolves the interface IPv4 address;
 - writes `.pentestagent-vpn.env` for shell/preflight visibility.
@@ -53,7 +53,7 @@ flowchart TD
     OVPN["vpn/<profile>.ovpn<br/>local, gitignored"]:::file
     VPN_SCRIPT["scripts/config_vpn.sh"]:::shell
     IFACE_CHECK{"VPN interface exists?"}:::decision
-    OPENVPN["sudo openvpn<br/>daemon mode"]:::shell
+    OPENVPN["openvpn / sudo openvpn<br/>daemon mode"]:::shell
     WAIT["wait for tun0 / chosen interface"]:::shell
     ENVFILE[".pentestagent-vpn.env<br/>shell-only exports"]:::file
     SOURCE["source .pentestagent-vpn.env"]:::shell
@@ -119,6 +119,86 @@ For a future "upload `.ovpn` + target IP and finish the HTB box" workflow, the u
 4. run `uv run python -m pentestagent.main -t <TARGET_IP> --env kali`.
 
 That future wrapper can be another shell script. It should not move VPN setup into Python.
+
+## Local Docker Kali Testing Workflow
+
+For local Mac/Docker Desktop testing, use the Compose-managed Kali container. The image is defined by `docker/Dockerfile.kali-local` and supports both arm64 and x86_64 Docker hosts.
+
+Start or rebuild the local Kali box:
+
+```bash
+docker compose up -d --build
+docker compose ps
+```
+
+SSH into the container over the localhost-only port:
+
+```bash
+ssh -p 2222 root@localhost
+# password: kali
+cd /app
+```
+
+The project root is already mounted into the container:
+
+```yaml
+volumes:
+  - ./:/app
+```
+
+That means normal development and testing do not need `scp`. All files from the repository root on the host are visible at `/app` inside Kali, and edits on the host appear there immediately. Prefer this mounted `/app` workflow for scripts, Python package code, configs, docs, wordlists, and generated reports.
+
+The live agent uses the mounted prebuilt Chroma store at `/app/my_knowledge_base` when RAG context is available. It does not run the crawler or preprocessing files under `/app/crawled-data/tmp` during target testing; those files are development tooling for preparing knowledge-base content.
+
+Use `scp` only for one-off files that should not live in the repository root:
+
+```bash
+scp -P 2222 path/to/local-file root@localhost:/root/
+```
+
+The expected container-side test flow is:
+
+```bash
+cd /app
+uv sync --group dev
+./scripts/config_vpn.sh vpn/<profile>.ovpn tun0
+source .pentestagent-vpn.env
+./scripts/preflight.sh
+uv run python -m pentestagent.main -t <TARGET_IP> --env kali
+```
+
+If the VPN profile should be read from outside `/app`, mount it explicitly in `docker-compose.yml`, for example `./vpn/lab.ovpn:/root/lab.ovpn:ro`, then run `./scripts/config_vpn.sh /root/lab.ovpn tun0` inside the container.
+
+## Local Docker Troubleshooting
+
+`VPN config not found: /app/machines_us-3.ovpn` means the script was given a path that does not exist inside the container. The Compose workflow mounts the repository root at `/app`, so a profile stored at `vpn/machines_us-3.ovpn` on the host should be referenced inside Kali as:
+
+```bash
+./scripts/config_vpn.sh vpn/machines_us-3.ovpn tun0
+```
+
+`sudo: command not found` means the script is running inside the minimal Docker Kali image as `root`. In that shell, `sudo` is unnecessary. `scripts/config_vpn.sh` should call `openvpn` directly when `id -u` is `0`, and only call `sudo openvpn` for non-root VM shells.
+
+If this appears:
+
+```text
+bash: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8): No such file or directory
+```
+
+the running container was built before locale generation was added to `docker/Dockerfile.kali-local`. It is only a warning. Rebuild and recreate the container to remove it:
+
+```bash
+docker compose up -d --build --force-recreate kali
+```
+
+`WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!` after rebuilding or recreating the container means SSH still has the previous container's host key recorded for `localhost:2222`. This is expected for the local throwaway Docker lab because the container generates fresh SSH host keys. Remove only the stale localhost entry, then connect again:
+
+```bash
+ssh-keygen -R '[localhost]:2222'
+ssh -p 2222 root@localhost
+```
+
+For a real remote host, investigate before removing a known-hosts entry. For this local Docker lab, the changed key is normal after image rebuilds or container recreation.
 
 ## Consequences
 

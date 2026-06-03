@@ -19,6 +19,22 @@ bad() {
   exit 1
 }
 
+start_openvpn() {
+  local -a openvpn_args=(
+    --config "$VPN_CONFIG"
+    --daemon pentestagent-vpn
+    --writepid /tmp/pentestagent-openvpn.pid
+  )
+
+  if [ "$(id -u)" -eq 0 ]; then
+    openvpn "${openvpn_args[@]}"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo openvpn "${openvpn_args[@]}"
+  else
+    bad "sudo not found and current user is not root; run as root or install sudo"
+  fi
+}
+
 VPN_CONFIG="${1:-}"
 VPN_IFACE="${2:-tun0}"
 
@@ -44,10 +60,7 @@ if ip link show "$VPN_IFACE" >/dev/null 2>&1; then
   printf '[ ok ] VPN interface already exists: %s\n' "$VPN_IFACE"
 else
   printf '[....] Starting OpenVPN with interface expectation: %s\n' "$VPN_IFACE"
-  sudo openvpn \
-    --config "$VPN_CONFIG" \
-    --daemon pentestagent-vpn \
-    --writepid /tmp/pentestagent-openvpn.pid
+  start_openvpn
 fi
 
 for _ in $(seq 1 45); do

@@ -117,6 +117,14 @@ Secrets stay in environment variables and must not be written to YAML:
 ANTHROPIC_API_KEY=...
 ```
 
+## Knowledge Base And Preprocessing Boundary
+
+`paths.knowledge_base_path` points to an already-built Chroma persistent store. The agent treats it as a read-only runtime input: `services/rag.py` opens the store, queries the configured collection, and adds bounded snippets to decision prompts.
+
+The runtime configuration does not describe crawler jobs, crawl targets, chunking rules, embedding batch sizes, or vectorizer output locations. Those are preprocessing concerns. The current `crawled-data/tmp/` files are development tooling and intermediate artifacts for building or experimenting with knowledge-base content; they are not loaded by `Settings`, not checked by preflight except indirectly through the final Chroma store, and not invoked during `pentestagent.main`.
+
+There is no separate application database in v1. Chroma's internal SQLite file is an implementation detail of the knowledge base, and reports/state remain filesystem artifacts under `reports/`.
+
 ## Runtime Rules
 
 - `run_timeout_seconds` is a graph-level circuit breaker. If the total run exceeds this limit, the graph routes to a blocked/final-report path.
@@ -132,7 +140,8 @@ ANTHROPIC_API_KEY=...
 - Keep a single `Settings` object as the typed runtime config.
 - Load YAML first, then apply environment-variable overrides.
 - Do not use raw nested dictionaries throughout the app; normalize into `Settings`.
-- Use optional dependencies only where needed. RAG config can exist even when the optional Chroma runtime is not installed.
+- Chroma is a normal runtime dependency because the default decision workflow can query the local knowledge base.
+- Keep crawler and vectorizer tooling outside runtime config until there is a supported preprocessing workflow.
 - Keep `.env.example` as documentation for environment-variable overrides, not as the primary config.
 - Add tests for config precedence:
   - base config only;
