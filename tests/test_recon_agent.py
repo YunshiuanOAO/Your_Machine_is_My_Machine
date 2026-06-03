@@ -1,3 +1,4 @@
+from pentestagent.tools.dirsearch import normalize_dirsearch_json
 from pentestagent.tools.parsers import parse_dirsearch_results, parse_rustscan_results
 from pentestagent.schemas.findings import ReconReport, ServiceFinding
 from pentestagent.tools.rustscan import parse_open_ports
@@ -41,6 +42,25 @@ def test_parse_dirsearch_results_keeps_interesting_paths():
 
     assert len(paths) == 2
     assert "Admin-like paths were observed." in notes
+
+
+def test_parse_dirsearch_results_accepts_native_json_object():
+    paths, notes = parse_dirsearch_results(
+        {
+            "info": {"args": "dirsearch --format=json"},
+            "results": [
+                {"status": 200, "url": "http://target/login"},
+                {"status": 404, "url": "http://target/missing"},
+            ],
+        }
+    )
+
+    assert len(paths) == 1
+    assert paths[0]["url"] == "http://target/login"
+
+
+def test_normalize_dirsearch_json_accepts_native_results_object():
+    assert normalize_dirsearch_json({"results": [{"status": 200}]}) == [{"status": 200}]
 
 
 def test_parse_open_ports_from_rustscan_output():

@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+#
+# Preflight check for running pentestagent on a Kali VM.
+# Verifies dependencies, external tools, config, knowledge base, and secrets
+# BEFORE you point the agent at a target. Exits non-zero if anything is missing.
+#
+# Usage:
+#   ./scripts/preflight.sh            # check the default 'kali' env
+#   ENV=cloud ./scripts/preflight.sh  # check a different config env
+#
+set -uo pipefail
+
+# Resolve project root (parent of this script's directory).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$ROOT"
+
+ENV_NAME="${ENV:-kali}"
+
+PASS=0
+WARN=0
+FAIL=0
+
+ok()   { printf '  \033[32m[ ok ]\033[0m %s\n' "$1"; PASS=$((PASS+1)); }
+warn() { printf '  \033[33m[warn]\033[0m %s\n' "$1"; WARN=$((WARN+1)); }
+bad()  { printf '  \033[31m[fail]\033[0m %s\n' "$1"; FAIL=$((FAIL+1)); }
+hdr()  { printf '\n\033[1m%s\033[0m\n' "$1"; }
+
+# --- 1. Python toolchain ---------------------------------------------------
+hdr "1. Python toolchain"
+if command -v uv >/dev/null 2>&1; then
+  ok "uv found ($(uv --version 2>/dev/null))"
+else
+  bad "uv not found on PATH. Install: https://docs.astral.sh/uv/"
+fi
+
+# Core + RAG deps must import inside the uv env.
+if uv run python -c "import langgraph, pydantic, yaml, xmltodict" 2>/dev/null; then
+  ok "core deps importable (langgraph, pydantic, pyyaml, xmltodict)"
+else
+  bad "core deps missing. Run: uv sync"
+fi
+
+if uv run python -c "import chromadb, sentence_transformers" 2>/dev/null; then
+  ok "RAG deps importable (chromadb, sentence-transformers)"
+else
+  bad "RAG deps missing. Run: uv sync --extra rag"
+fi
+
+# --- 2. External pentest tools on PATH ------------------------------------
+hdr "2. External tools on PATH"
+# Tools the scan pipeline shells out to directly:
+for t in rustscan nmap dirsearch whatweb; do
+  if command -v "$t" >/dev/null 2>&1; then ok "$t"; else bad "$t not found (scan pipeline needs it)"; fi
+done
+# Tools the LLM may propose as commands (allowlisted) but not strictly required:
+for t in searchsploit msfconsole curl; do
+  if command -v "$t" >/dev/null 2>&1; then ok "$t"; else warn "$t not found (LLM may propose it; not required to start)"; fi
+done
+
+# --- 3. Config -------------------------------------------------------------
+hdr "3. Config (env: $ENV_NAME)"
+if [ -f "config.yaml" ]; then ok "config.yaml present"; else bad "config.yaml missing"; fi
+if [ -f "config-${ENV_NAME}.yaml" ]; then
+  ok "config-${ENV_NAME}.yaml present"
+else
+  warn "config-${ENV_NAME}.yaml missing (will fall back to config.yaml defaults)"
+fi
+
+# --- 4. Wordlist -----------------------------------------------------------
+hdr "4. Wordlist"
+WL="$(uv run python -c "from pentestagent.config import Settings; s=Settings.load(env='${ENV_NAME}'); print(s.web_wordlist)" 2>/dev/null)"
+if [ -n "$WL" ]; then
+  case "$WL" in
+    /*) WL_PATH="$WL" ;;
+    *)  WL_PATH="$ROOT/$WL" ;;
+  esac
+  if [ -f "$WL_PATH" ]; then ok "wordlist exists: $WL_PATH"; else bad "wordlist missing: $WL_PATH"; fi
+else
+  warn "could not resolve wordlist path from Settings"
+fi
+
+# --- 5. Knowledge base + secret -------------------------------------------
+hdr "5. Knowledge base & secrets"
+if uv run pytest tests/test_knowledge_base.py -q >/dev/null 2>&1; then
+  ok "knowledge base validated (chroma store + collection present)"
+else
+  bad "knowledge base check failed. Run: uv run pytest tests/test_knowledge_base.py -q"
+fi
+
+if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+  ok "ANTHROPIC_API_KEY is set"
+else
+  warn "ANTHROPIC_API_KEY not set (required unless you run with --no-llm)"
+fi
+
+# --- 6. Test suite ---------------------------------------------------------
+hdr "6. Test suite"
+if uv run pytest -q >/dev/null 2>&1; then
+  ok "pytest suite passes"
+else
+  bad "pytest suite failing. Run: uv run pytest -q"
+fi
+
+# --- Summary ---------------------------------------------------------------
+hdr "Summary"
+printf '  pass=%d  warn=%d  fail=%d\n' "$PASS" "$WARN" "$FAIL"
+if [ "$FAIL" -gt 0 ]; then
+  printf '\n\033[31mNot ready.\033[0m Fix the [fail] items above, then re-run.\n'
+  exit 1
+fi
+printf '\n\033[32mReady.\033[0m First run WITHOUT --auto-approve so you eyeball each proposal:\n'
+printf '  uv run python -m pentestagent.main -t <TARGET> --env %s\n' "$ENV_NAME"
+[ "$WARN" -gt 0 ] && printf '(Review the [warn] items — they may matter for your run.)\n'
+exit 0

@@ -1,0 +1,40 @@
+runtime:
+  env: dev
+  max_retries: 2
+  max_tasks: 3
+  run_timeout_seconds: 3600
+
+model:
+  provider: anthropic
+  name: claude-sonnet-4-6
+
+paths:
+  report_dir: reports
+  knowledge_base_path: my_knowledge_base
+  web_wordlist: wordlists/medium.txt
+
+rag:
+  collection_name: hacktricks_kb
+  top_k: 3
+  max_snippets: 6
+  snippet_budget_chars: 2000
+
+tools:
+  allowed:
+    - nmap
+    - rustscan
+    - dirsearch
+    - whatweb
+    - searchsploit
+    - msfconsole
+    - curl
+
+timeouts:
+  command_seconds: 300
+  scan_seconds: 300
+  web_scan_seconds: 180
+
+execution:
+  auto_approve: false
+  allow_interactive: false
+  exploit_dispatch: sequential
