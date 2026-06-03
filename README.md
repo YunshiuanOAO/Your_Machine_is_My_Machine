@@ -1,2 +1,214 @@
-# auto_pentes_tools
-This is a pentest tools with auto recon and using agent to do pentesting
+# pentestagent
+
+A coordinator-specialist pentest agent for authorized lab targets. The v1 workflow keeps command execution local and explicit:
+
+```text
+Recon Agent -> Decision Coordinator -> Exploit Agent -> Approval -> Executor -> Report
+```
+
+LLM agents propose structured commands, but only the local executor validates and runs them.
+
+## Requirements
+
+- Python managed with `uv`
+- An Anthropic API key for LLM-backed runs
+- Optional RAG dependencies when using the local Chroma knowledge base
+- External tools for live Kali scans:
+  - `rustscan`
+  - `nmap`
+  - `dirsearch`
+  - `whatweb`
+  - optional proposal tools: `searchsploit`, `msfconsole`, `curl`
+
+## Install
+
+```bash
+uv sync
+```
+
+For RAG-backed runs:
+
+```bash
+uv sync --extra rag
+```
+
+Set your API key:
+
+```bash
+export ANTHROPIC_API_KEY="..."
+```
+
+The default knowledge base path is configured as `PENTEST_KNOWLEDGE_BASE_PATH` and currently points to `my_knowledge_base`.
+
+## Configuration
+
+Runtime configuration is layered:
+
+1. `config.yaml`
+2. `config-<env>.yaml`, selected by `--env <env>` or `PENTEST_ENV`
+3. environment variables
+
+Kali/HTB-specific overrides live in:
+
+```text
+config-kali.yaml
+```
+
+The Kali config uses longer scan timeouts, keeps human approval enabled, and keeps exploit dispatch sequential for v1.
+
+## Test Locally
+
+Run the unit suite:
+
+```bash
+UV_CACHE_DIR=.uv-cache uv run pytest -q
+```
+
+Validate only the knowledge base:
+
+```bash
+UV_CACHE_DIR=.uv-cache uv run pytest tests/test_knowledge_base.py -q
+```
+
+Run without Claude calls using deterministic fallbacks:
+
+```bash
+uv run python -m pentestagent.main -t 10.10.10.10 --env dev --skip-scan --no-llm
+```
+
+## Kali/HTB Test Flow
+
+Use Kali or a Kali-like VM for live HTB testing because the scanner flow depends on pentest tools and VPN/network routing.
+
+1. Clone or copy this project onto the Kali VM.
+
+2. Install Python dependencies:
+
+```bash
+uv sync --extra rag
+```
+
+3. Confirm your secret is available:
+
+```bash
+export ANTHROPIC_API_KEY="..."
+```
+
+4. Run the executable preflight:
+
+```bash
+./scripts/preflight.sh
+```
+
+The preflight checks:
+
+- `uv`
+- Python dependencies
+- RAG dependencies
+- `rustscan`, `nmap`, `dirsearch`, `whatweb`
+- optional proposal tools such as `searchsploit`, `msfconsole`, and `curl`
+- `config.yaml` and `config-kali.yaml`
+- configured wordlist path
+- Chroma knowledge base
+- `ANTHROPIC_API_KEY`
+- the pytest suite
+
+5. First live run, without auto-approval:
+
+```bash
+uv run python -m pentestagent.main -t <TARGET_IP> --env kali
+```
+
+Review each proposed command before approving it. After you trust the behavior in your lab, you can opt into automatic approval:
+
+```bash
+uv run python -m pentestagent.main -t <TARGET_IP> --env kali --auto-approve
+```
+
+## Using Existing Scan Artifacts
+
+You can skip live scanning and load existing artifacts:
+
+```bash
+uv run python -m pentestagent.main \
+  -t <TARGET_IP> \
+  --env kali \
+  --rustscan-file path/to/rustscan_output.json \
+  --dirsearch-file path/to/dirsearch_output.json
+```
+
+If you pass artifact files, the agent references those paths in `recon_report.json`; it does not create a new `scan/` directory.
+
+## Output
+
+Each run writes to:
+
+```text
+reports/<run_id>/
+```
+
+Always expected for normal completion:
+
+```text
+events.jsonl
+recon_report.json
+final_report.json
+final_report.md
+```
+
+For a full scanner-backed run, `scan/` is created:
+
+```text
+scan/
+├── rustscan_raw.txt
+├── rustscan.xml
+├── rustscan_output.json
+├── dirsearch_output.json
+└── whatweb_output.json
+```
+
+When commands are proposed and executed or blocked, `commands/` is created:
+
+```text
+commands/
+├── <command_id>.stdout.txt
+└── <command_id>.stderr.txt
+```
+
+The command id is a UUID. Its task mapping and command metadata are recorded in `events.jsonl` and `final_report.json`.
+
+## Useful Commands
+
+Run with Kali config:
+
+```bash
+uv run python -m pentestagent.main -t <TARGET_IP> --env kali
+```
+
+Run without scanning:
+
+```bash
+uv run python -m pentestagent.main -t <TARGET_IP> --env kali --skip-scan
+```
+
+Run without LLM calls:
+
+```bash
+uv run python -m pentestagent.main -t <TARGET_IP> --env kali --no-llm
+```
+
+Override retry budget:
+
+```bash
+uv run python -m pentestagent.main -t <TARGET_IP> --env kali --max-retries 6
+```
+
+## Troubleshooting
+
+- No `scan/` directory: the run used `--skip-scan`, supplied artifact files, or ended before the scanner flow started.
+- No `commands/` directory: no exploit task produced an executable command, or the run ended after recon/decision.
+- `Tool not found on PATH`: install the missing Kali tool and re-run `./scripts/preflight.sh`.
+- RAG import failure: run `uv sync --extra rag`.
+- Knowledge-base failure: confirm `my_knowledge_base/` exists and contains the expected Chroma collection.
+
+Only run this against systems where you have explicit authorization.
