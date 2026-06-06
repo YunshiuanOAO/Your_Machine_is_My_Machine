@@ -1,6 +1,13 @@
 import time
 
-from pentestagent.graph.routing import route_after_aggregate, route_after_approval, route_after_decision, run_timed_out
+from pentestagent.graph.routing import (
+    route_after_aggregate,
+    route_after_approval,
+    route_after_codex_aggregate,
+    route_after_codex_decision,
+    route_after_decision,
+    run_timed_out,
+)
 from pentestagent.schemas.tasks import ExploitResult
 
 
@@ -32,3 +39,11 @@ def test_run_timeout_routes_to_report():
     assert route_after_decision(state) == "report"
     assert route_after_approval({**state, "approved": True}) == "report"
     assert route_after_aggregate(state) == "report"
+
+
+def test_codex_routes_fanout_until_success_or_round_limit():
+    assert route_after_codex_decision({"pending_agent_tasks": [object()]}) == "fanout"
+    assert route_after_codex_decision({"pending_agent_tasks": []}) == "report"
+    assert route_after_codex_aggregate({"agent_results": [], "decision_round": 1, "max_decision_rounds": 3}) == "decision"
+    assert route_after_codex_aggregate({"agent_results": [], "decision_round": 3, "max_decision_rounds": 3}) == "report"
+    assert route_after_codex_aggregate({"agent_results": [ExploitResult(task_id="x", status="success", summary="ok")]}) == "report"

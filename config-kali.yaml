@@ -22,3 +22,5 @@ execution:
   auto_approve: false
   allow_interactive: false
   exploit_dispatch: sequential
+  max_parallel_exploit_agents: 3
+  decision_max_rounds: 3

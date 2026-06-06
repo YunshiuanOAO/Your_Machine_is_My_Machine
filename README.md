@@ -151,6 +151,34 @@ Useful flags:
 
 The dashboard intentionally shows complete observable artifacts, not hidden model chain-of-thought. Visible reasoning includes model prompts, payloads, structured responses, command proposal reasoning, execution results, and reports.
 
+## Codex SDK Exploit Fan-Out
+
+The decision coordinator can fan out multiple scoped exploit agents through the Codex SDK. Each branch returns an `AgentRunResult` report whether it succeeds, fails, retries, or is blocked. If one branch succeeds, the dispatcher cancels still-running sibling branches and the final report is produced.
+
+Install the Node SDK worker dependencies:
+
+```bash
+npm install
+```
+
+Run in fan-out mode:
+
+```bash
+export PENTEST_EXPLOIT_DISPATCH=codex_parallel
+export PENTEST_CODEX_WORKER_COMMAND="node scripts/codex_exploit_worker.mjs"
+export PENTEST_MAX_PARALLEL_EXPLOIT_AGENTS=3
+export PENTEST_DECISION_MAX_ROUNDS=3
+uv run python -m pentestagent.main -t <TARGET_IP> --env kali
+```
+
+Decision behavior in this mode:
+
+- Generate several scoped exploit worker tasks from recon, RAG, and previous branch reports.
+- Dispatch up to `PENTEST_MAX_PARALLEL_EXPLOIT_AGENTS` Codex SDK workers.
+- Require every worker to return a complete exploit report, including failed and blocked attempts.
+- Re-run decision after failed rounds, using the previous reports as context.
+- Stop when any branch succeeds, when no useful branch remains, or when `PENTEST_DECISION_MAX_ROUNDS` is reached.
+
 ## Kali/HTB Test Flow
 
 Use Kali or a Kali-like VM for live HTB testing because the scanner flow depends on pentest tools and VPN/network routing.

@@ -41,3 +41,8 @@ execution:
   auto_approve: false
   allow_interactive: false
   exploit_dispatch: sequential
+  max_parallel_exploit_agents: 3
+  decision_max_rounds: 3
+  # Enable Codex SDK fan-out mode with:
+  # exploit_dispatch: codex_parallel
+  # codex_worker_command: node scripts/codex_exploit_worker.mjs
