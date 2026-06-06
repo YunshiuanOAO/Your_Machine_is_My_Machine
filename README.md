@@ -50,6 +50,24 @@ For Kali/HTB runs, source it with the Kali environment so it prints the VPN setu
 ENV=kali source scripts/config_secrets.sh
 ```
 
+## OpenAI-Compatible Provider
+
+The agent can use an OpenAI-compatible Chat Completions endpoint instead of Anthropic.
+
+For the Yunshiuan endpoint:
+
+```bash
+export PENTEST_MODEL_PROVIDER=openai
+export PENTEST_MODEL_NAME=gpt-4.1-mini
+export OPENAI_BASE_URL="https://api.yunshiuan.com/"
+export OPENAI_API_KEY="..."
+uv run python -m pentestagent.main -t <TARGET_IP> --env openai
+```
+
+Keep real API keys out of git. For GitHub Actions or Kali deploys, store the key as a GitHub Secret or on the Kali host environment as `OPENAI_API_KEY`.
+
+You can also set these in an untracked local `.env` file based on `.env.example`, then export them before running the agent.
+
 Optional LangSmith Cloud tracing:
 
 ```bash
@@ -106,6 +124,32 @@ Run without Claude calls using deterministic fallbacks:
 ```bash
 uv run python -m pentestagent.main -t 10.10.10.10 --env dev --skip-scan --no-llm
 ```
+
+## 3D Run Dashboard
+
+The CLI starts a local dashboard by default for interactive runs. It shows the current stage, agent task branches, observable prompts/payloads/responses, command proposals, command output artifacts, and the final report.
+
+```bash
+uv run python -m pentestagent.main -t <TARGET_IP> --env kali
+```
+
+The CLI prints the dashboard URL:
+
+```text
+Dashboard: http://127.0.0.1:8765
+```
+
+Useful flags:
+
+```bash
+--no-ui            # disable the dashboard
+--ui-host 0.0.0.0  # bind outside localhost, only for trusted lab networks
+--ui-port 8765
+--no-ui-browser   # do not try to open a browser
+--no-ui-hold      # exit immediately after completion instead of keeping the dashboard alive
+```
+
+The dashboard intentionally shows complete observable artifacts, not hidden model chain-of-thought. Visible reasoning includes model prompts, payloads, structured responses, command proposal reasoning, execution results, and reports.
 
 ## Kali/HTB Test Flow
 

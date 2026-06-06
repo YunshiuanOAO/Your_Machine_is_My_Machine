@@ -117,3 +117,29 @@ tools:
     assert settings.langsmith_api_key == "lsv2_test"
     assert settings.langsmith_project == "pentestagent-test"
     assert settings.langsmith_endpoint == "https://eu.api.smith.langchain.com"
+
+
+def test_openai_environment_variables_are_loaded(tmp_path):
+    (tmp_path / "config.yaml").write_text(
+        """
+model:
+  provider: anthropic
+  name: claude-test
+""",
+        encoding="utf-8",
+    )
+
+    settings = Settings.load(
+        project_root=tmp_path,
+        environ={
+            "PENTEST_MODEL_PROVIDER": "openai",
+            "PENTEST_MODEL_NAME": "gpt-test",
+            "OPENAI_API_KEY": "test-key",
+            "OPENAI_BASE_URL": "https://api.yunshiuan.com/",
+        },
+    )
+
+    assert settings.model_provider == "openai"
+    assert settings.model == "gpt-test"
+    assert settings.openai_api_key == "test-key"
+    assert settings.openai_base_url == "https://api.yunshiuan.com/"
