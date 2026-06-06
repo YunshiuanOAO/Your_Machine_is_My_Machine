@@ -26,6 +26,7 @@ observability:
 tools:
   allowed:
     - rustscan
+    - nmap
     - dirsearch
     - whatweb
     - searchsploit

@@ -10,6 +10,11 @@ runtime:
 observability:
   langsmith_project: pentestagent-kali
 
+paths:
+  # Kali's packaged wordlists live under /usr/share/wordlists. The preflight
+  # treats this as advisory because operators may choose a target-specific list.
+  web_wordlist: /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt
+
 timeouts:
   # Full-range RustScan scans against a live HTB box are slower than a local
   # lab target; give them more headroom.

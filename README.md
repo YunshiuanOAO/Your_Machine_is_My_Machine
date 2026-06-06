@@ -16,6 +16,7 @@ LLM agents propose structured commands, but only the local executor validates an
 - Chroma-backed local knowledge base dependencies
 - External tools for live Kali scans:
   - `rustscan`
+  - `nmap`
   - `dirsearch`
   - `whatweb`
   - optional proposal tools: `searchsploit`, `msfconsole`, `curl`
@@ -217,7 +218,7 @@ The preflight checks:
 - `uv`
 - Python dependencies
 - Chroma/runtime dependencies
-- `rustscan`, `dirsearch`, `whatweb`
+- `rustscan`, `nmap`, `dirsearch`, `whatweb`
 - optional proposal tools such as `searchsploit`, `msfconsole`, and `curl`
 - `config.yaml` and `config-kali.yaml`
 - shell-exported VPN interface, if running Kali/HTB
@@ -277,6 +278,7 @@ For a full scanner-backed run, `scan/` is created:
 ```text
 scan/
 ├── rustscan_raw.txt
+├── nmap_service.xml
 ├── dirsearch_output.json
 └── whatweb_output.json
 ```
