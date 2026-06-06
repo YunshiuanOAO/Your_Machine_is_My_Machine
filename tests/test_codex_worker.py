@@ -31,7 +31,7 @@ def test_codex_fanout_returns_blocked_report_when_worker_not_configured(tmp_path
     assert (artifacts.run_dir / "agent_reports" / "task_1.json").exists()
 
 
-def test_codex_parallel_graph_reports_after_blocked_rounds(tmp_path):
+def test_codex_parallel_graph_reports_after_decision_has_no_new_tasks(tmp_path):
     artifacts = RunArtifacts.create("10.10.10.10", tmp_path)
     settings = Settings(
         project_root=tmp_path,
@@ -70,6 +70,6 @@ def test_codex_parallel_graph_reports_after_blocked_rounds(tmp_path):
         }
     )
 
-    assert final["decision_round"] == 1
+    assert final["decision_round"] == 2
     assert final["agent_results"]
     assert final["final_report"]["status"] == "failed_or_blocked"

@@ -166,6 +166,9 @@ Run in fan-out mode:
 
 ```bash
 export PENTEST_EXPLOIT_DISPATCH=codex_parallel
+export PENTEST_DECISION_BACKEND=codex
+export PENTEST_CODEX_DECISION_TIMEOUT_SECONDS=60
+export PENTEST_CODEX_DECISION_WORKER_COMMAND="node scripts/codex_decision_worker.mjs"
 export PENTEST_CODEX_WORKER_COMMAND="node scripts/codex_exploit_worker.mjs"
 export PENTEST_MAX_PARALLEL_EXPLOIT_AGENTS=3
 export PENTEST_DECISION_MAX_ROUNDS=3
@@ -179,6 +182,10 @@ Decision behavior in this mode:
 - Require every worker to return a complete exploit report, including failed and blocked attempts.
 - Re-run decision after failed rounds, using the previous reports as context.
 - Stop when any branch succeeds, when no useful branch remains, or when `PENTEST_DECISION_MAX_ROUNDS` is reached.
+
+Codex decision worker diagnostics are written to `reports/<run>/codex_decision/payload.json`, `stdout.txt`, and `stderr.txt`. If Codex is unavailable, times out, or reports a worker failure, the coordinator falls back to the regular LLM or heuristic task builder.
+
+Both Codex SDK workers run with `workspace-write` sandbox mode and `sandbox_workspace_write.network_access=true`, so scoped worker commands can reach the lab target network. The host running PentestAgent still needs real routing to the target, such as an active VPN interface for HTB.
 
 ## Kali/HTB Test Flow
 

@@ -1,7 +1,14 @@
-from pentestagent.agents.decision_coordinator import build_history_rag_queries, build_heuristic_tasks, build_rag_queries
+from pentestagent.agents.decision_coordinator import (
+    build_history_rag_queries,
+    build_heuristic_tasks,
+    build_rag_queries,
+    run,
+    select_pending_task,
+)
 from pentestagent.config import Settings
 from pentestagent.schemas.findings import ReconReport, ServiceAnalysis, ServiceFinding
 from pentestagent.schemas.tasks import ExploitResult
+from pentestagent.services.llm import ClaudeJSONClient
 
 
 def test_build_heuristic_tasks_prefers_versioned_web_services():
@@ -59,6 +66,135 @@ def test_build_heuristic_tasks_includes_recon_service_analysis_context():
     assert "Recon service analysis for port 3000/http" in tasks[0].context_snippets[0]
     assert tasks[0].evidence_refs == ["scan/nmap_service.xml"]
     assert "dirsearch" in tasks[0].context_snippets[0]
+
+
+def test_build_heuristic_tasks_uses_service_analysis_priority():
+    report = ReconReport(
+        target_ip="10.10.10.10",
+        services=[
+            ServiceFinding(port=22, service_name="ssh", product="OpenSSH", version="9.6"),
+            ServiceFinding(port=3000, service_name="ppp"),
+        ],
+        service_analysis=[
+            ServiceAnalysis(
+                port=22,
+                service_name="ssh",
+                category="remote_access",
+                priority=6,
+                summary="SSH access surface.",
+            ),
+            ServiceAnalysis(
+                port=3000,
+                service_name="ppp",
+                category="web",
+                priority=8,
+                summary="Likely web service needs follow-up.",
+            ),
+        ],
+    )
+
+    tasks = build_heuristic_tasks(report, [], Settings(max_tasks=2))
+
+    assert [task.port for task in tasks] == [3000, 22]
+
+
+def test_select_pending_task_rotates_to_unattempted_tasks_before_retries():
+    tasks = build_heuristic_tasks(
+        ReconReport(
+            target_ip="10.10.10.10",
+            services=[
+                ServiceFinding(port=3000, service_name="http"),
+                ServiceFinding(port=22, service_name="ssh"),
+            ],
+        ),
+        [],
+        Settings(max_tasks=2),
+    )
+
+    first = select_pending_task(tasks, [], retry_count=0, max_retries=2)
+    second = select_pending_task(
+        tasks,
+        [ExploitResult(task_id=first.task_id, status="retry", summary="needs follow-up")],
+        retry_count=1,
+        max_retries=2,
+    )
+
+    assert second is not None
+    assert second.task_id != first.task_id
+
+
+def test_select_pending_task_skips_replan_requested_task():
+    tasks = build_heuristic_tasks(
+        ReconReport(
+            target_ip="10.10.10.10",
+            services=[
+                ServiceFinding(port=3000, service_name="http"),
+            ],
+        ),
+        [],
+        Settings(max_tasks=1),
+    )
+
+    selected = select_pending_task(
+        tasks,
+        [
+            ExploitResult(
+                task_id=tasks[0].task_id,
+                status="retry",
+                summary="needs decision",
+                evidence={"decision_replan": True},
+            )
+        ],
+        retry_count=1,
+        max_retries=1,
+    )
+
+    assert selected is None
+
+
+def test_decision_replan_is_not_stopped_by_round_limit():
+    tasks = build_heuristic_tasks(
+        ReconReport(
+            target_ip="10.10.10.10",
+            services=[
+                ServiceFinding(port=3000, service_name="http"),
+            ],
+        ),
+        [],
+        Settings(max_tasks=1),
+    )
+    settings = Settings(
+        max_tasks=1,
+        use_llm=False,
+        decision_backend="codex",
+        codex_decision_worker_command=None,
+        decision_max_rounds=1,
+    )
+
+    result = run(
+        {
+            "recon_report": ReconReport(
+                target_ip="10.10.10.10",
+                services=[ServiceFinding(port=3000, service_name="http")],
+            ),
+            "exploit_tasks": tasks,
+            "exploit_results": [
+                ExploitResult(
+                    task_id=tasks[0].task_id,
+                    status="retry",
+                    summary="needs decision",
+                    evidence={"decision_replan": True},
+                )
+            ],
+            "decision_round": 10,
+            "max_decision_rounds": 1,
+        },
+        settings=settings,
+        llm_client=ClaudeJSONClient(settings),
+    )
+
+    assert result["decision_round"] == 11
+    assert result["pending_task"] is None
 
 
 def test_build_history_rag_queries_detects_root_progress():

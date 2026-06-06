@@ -20,15 +20,12 @@ function emit(result) {
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
-function fallback(task, status, summary, evidence = {}) {
+function fallback(status, summary, evidence = {}) {
   return {
-    task_id: task?.task_id || "unknown",
-    agent_kind: "exploit",
     status,
     summary,
-    evidence,
-    memory_updates: [],
-    spawned_tasks: []
+    tasks: [],
+    evidence
   };
 }
 
@@ -75,7 +72,7 @@ function classifyCodexError(error) {
   }
   return {
     status: "failed",
-    summary: "Codex SDK worker crashed.",
+    summary: "Codex SDK decision worker crashed.",
     evidence: { error: message, error_kind: "worker_crash" }
   };
 }
@@ -177,13 +174,12 @@ function buildCodexOptions(codexHome) {
 }
 
 const input = JSON.parse(await readStdin());
-const task = input.task;
 
 let Codex;
 try {
   ({ Codex } = await import("@openai/codex-sdk"));
 } catch (error) {
-  emit(fallback(task, "blocked", "Codex SDK package is not installed or cannot be imported.", {
+  emit(fallback("blocked", "Codex SDK package is not installed or cannot be imported.", {
     error: String(error),
     install: "npm install"
   }));
@@ -191,30 +187,39 @@ try {
 }
 
 const prompt = `
-You are a Codex SDK exploit worker for an authorized lab target.
+You are a Codex SDK decision coordinator for an authorized pentest lab run.
 
 Return exactly one JSON object matching:
 {
-  "task_id": "${task.task_id}",
-  "agent_kind": "exploit",
-  "status": "success | failed | retry | blocked",
-  "summary": "complete result whether successful or failed",
-  "evidence": {},
-  "memory_updates": [],
-  "spawned_tasks": []
+  "tasks": [
+    {
+      "task_id": "stable-short-id",
+      "target_ip": "target",
+      "service_name": "service",
+      "port": 80,
+      "cve_id": null,
+      "cve_ids": [],
+      "objective": "what the next worker should prove or disprove",
+      "hypothesis": "short reason this path is worth testing",
+      "confidence_score": 1,
+      "context_snippets": ["only context directly needed for this task"],
+      "evidence_refs": ["artifact path, URL, or command output reference"],
+      "success_criteria": ["specific evidence that should end this task"],
+      "max_steps": 3,
+      "memory_key": "stable memory id"
+    }
+  ]
 }
 
 Rules:
-- Work only on this scoped task.
-- Do not broaden scanning beyond scope.
-- Do not hide failures.
-- Include complete observable rationale, commands considered, outputs, paths, and blockers in evidence.
-- Do not include hidden chain-of-thought; include concise visible rationale and concrete evidence.
-- If you cannot safely or technically execute the task, return "blocked" with the reason.
-- If you find a successful exploit path or proof, return "success".
-- If the current branch failed but suggests a concrete follow-up, return "retry" and include it in evidence.follow_up.
+- Use the normalized recon report, service_analysis, snippets, and prior results.
+- Prefer high-signal tasks, but do not ignore lower-priority ports when they may be related.
+- Prioritize web follow-up on nonstandard web ports when service_analysis recommends it.
+- Avoid repeating previous failed or low-value attempts.
+- Do not include raw commands; downstream exploit workers propose commands.
+- Return valid JSON only. Do not include markdown.
 
-Worker input:
+Decision input:
 ${JSON.stringify(input, null, 2)}
 `;
 
@@ -231,18 +236,12 @@ try {
   const turn = await thread.run(prompt);
   const parsed = parseJsonObject(turn.finalResponse || "");
   emit({
-    task_id: parsed.task_id || task.task_id,
-    agent_kind: "exploit",
-    status: parsed.status || "blocked",
-    summary: parsed.summary || "Codex worker returned no summary.",
+    tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
     evidence: {
-      ...(parsed.evidence || {}),
       codex_items: turn.items || []
-    },
-    memory_updates: parsed.memory_updates || [],
-    spawned_tasks: parsed.spawned_tasks || []
+    }
   });
 } catch (error) {
   const classified = classifyCodexError(error);
-  emit(fallback(task, classified.status, classified.summary, classified.evidence));
+  emit(fallback(classified.status, classified.summary, classified.evidence));
 }

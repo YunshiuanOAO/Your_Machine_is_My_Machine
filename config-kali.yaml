@@ -13,14 +13,16 @@ observability:
 paths:
   # Kali's packaged wordlists live under /usr/share/wordlists. The preflight
   # treats this as advisory because operators may choose a target-specific list.
-  web_wordlist: /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt
+  web_wordlist: /usr/share/dirb/wordlists/common.txt
 
 timeouts:
   # Full-range RustScan scans against a live HTB box are slower than a local
   # lab target; give them more headroom.
   scan_seconds: 600
-  command_seconds: 300
-  web_scan_seconds: 300
+  # Web enumeration can legitimately take several minutes. The executor caps
+  # every tool by command_seconds, so keep this at least as high as web scans.
+  command_seconds: 900
+  web_scan_seconds: 900
 
 execution:
   # Keep human approval on for live targets. Interactive stays off in v1.

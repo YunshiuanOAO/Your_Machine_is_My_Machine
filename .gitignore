@@ -198,6 +198,13 @@ vpn/*
 
 # mypy
 .mypy_cache/
+
+### Node ###
+node_modules/
+npm-debug.log*
+
+# Local Chroma writes are large and should not be accidentally recommitted.
+my_knowledge_base/*.sqlite3-*
 .dmypy.json
 dmypy.json
 

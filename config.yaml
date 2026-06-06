@@ -11,7 +11,7 @@ model:
 paths:
   report_dir: reports
   knowledge_base_path: my_knowledge_base
-  web_wordlist: wordlists/medium.txt
+  web_wordlist: /usr/share/dirb/wordlists/common.txt
 
 rag:
   collection_name: hacktricks_kb
@@ -41,6 +41,9 @@ timeouts:
 execution:
   auto_approve: false
   allow_interactive: false
+  decision_backend: codex
+  codex_decision_timeout_seconds: 60
+  codex_decision_worker_command: node scripts/codex_decision_worker.mjs
   exploit_dispatch: sequential
   max_parallel_exploit_agents: 3
   decision_max_rounds: 3

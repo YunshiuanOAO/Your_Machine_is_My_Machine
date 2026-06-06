@@ -24,8 +24,37 @@ def test_route_after_aggregate_reports_on_success():
     assert route_after_aggregate({"exploit_results": [ExploitResult(task_id="x", status="success", summary="ok")]}) == "report"
 
 
-def test_route_after_aggregate_reports_when_retries_exhausted():
-    assert route_after_aggregate({"retry_count": 2, "max_retries": 2, "exploit_results": []}) == "report"
+def test_route_after_aggregate_ignores_retry_limit_and_returns_to_decision():
+    assert route_after_aggregate({"retry_count": 2, "max_retries": 2, "exploit_results": []}) == "decision"
+
+
+def test_route_after_aggregate_returns_to_decision_when_all_tasks_exhausted():
+    from pentestagent.schemas.tasks import ExploitTask
+
+    tasks = [
+        ExploitTask(task_id="task_1", target_ip="10.10.10.10", service_name="ssh", port=22, hypothesis="h", confidence_score=5),
+        ExploitTask(task_id="task_2", target_ip="10.10.10.10", service_name="http", port=3000, hypothesis="h", confidence_score=8),
+    ]
+
+    assert route_after_aggregate(
+        {
+            "exploit_tasks": tasks,
+            "exploit_results": [ExploitResult(task_id="task_1", status="retry", summary="retry")],
+            "retry_count": 1,
+            "max_retries": 1,
+        }
+    ) == "decision"
+    assert route_after_aggregate(
+        {
+            "exploit_tasks": tasks,
+            "exploit_results": [
+                ExploitResult(task_id="task_1", status="retry", summary="retry"),
+                ExploitResult(task_id="task_2", status="retry", summary="retry"),
+            ],
+            "retry_count": 2,
+            "max_retries": 1,
+        }
+    ) == "decision"
 
 
 def test_run_timeout_routes_to_report():
@@ -41,9 +70,9 @@ def test_run_timeout_routes_to_report():
     assert route_after_aggregate(state) == "report"
 
 
-def test_codex_routes_fanout_until_success_or_round_limit():
+def test_codex_routes_fanout_until_success_or_decision_gives_up():
     assert route_after_codex_decision({"pending_agent_tasks": [object()]}) == "fanout"
     assert route_after_codex_decision({"pending_agent_tasks": []}) == "report"
     assert route_after_codex_aggregate({"agent_results": [], "decision_round": 1, "max_decision_rounds": 3}) == "decision"
-    assert route_after_codex_aggregate({"agent_results": [], "decision_round": 3, "max_decision_rounds": 3}) == "report"
+    assert route_after_codex_aggregate({"agent_results": [], "decision_round": 3, "max_decision_rounds": 3}) == "decision"
     assert route_after_codex_aggregate({"agent_results": [ExploitResult(task_id="x", status="success", summary="ok")]}) == "report"
