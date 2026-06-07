@@ -21,7 +21,22 @@ def test_route_after_approval_requires_explicit_true():
 
 
 def test_route_after_aggregate_reports_on_success():
-    assert route_after_aggregate({"exploit_results": [ExploitResult(task_id="x", status="success", summary="ok")]}) == "report"
+    assert route_after_aggregate(
+        {
+            "exploit_results": [
+                ExploitResult(
+                    task_id="x",
+                    status="success",
+                    summary="shell",
+                    evidence={"shell_handoff": {"attach_command": "tmux attach -t shell-x"}},
+                )
+            ]
+        }
+    ) == "report"
+
+
+def test_route_after_aggregate_does_not_report_success_without_shell():
+    assert route_after_aggregate({"exploit_results": [ExploitResult(task_id="x", status="success", summary="fingerprint only")]}) == "decision"
 
 
 def test_route_after_aggregate_ignores_retry_limit_and_returns_to_decision():
@@ -75,4 +90,16 @@ def test_codex_routes_fanout_until_success_or_decision_gives_up():
     assert route_after_codex_decision({"pending_agent_tasks": []}) == "report"
     assert route_after_codex_aggregate({"agent_results": [], "decision_round": 1, "max_decision_rounds": 3}) == "decision"
     assert route_after_codex_aggregate({"agent_results": [], "decision_round": 3, "max_decision_rounds": 3}) == "decision"
-    assert route_after_codex_aggregate({"agent_results": [ExploitResult(task_id="x", status="success", summary="ok")]}) == "report"
+    assert route_after_codex_aggregate({"agent_results": [ExploitResult(task_id="x", status="success", summary="fingerprint only")]}) == "decision"
+    assert route_after_codex_aggregate(
+        {
+            "agent_results": [
+                ExploitResult(
+                    task_id="x",
+                    status="success",
+                    summary="shell",
+                    evidence={"shell_handoff": {"attach_command": "tmux attach -t shell-x"}},
+                )
+            ]
+        }
+    ) == "report"

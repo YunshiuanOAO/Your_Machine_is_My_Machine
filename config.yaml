@@ -32,6 +32,11 @@ tools:
     - searchsploit
     - msfconsole
     - curl
+    - python3
+    - node
+    - nc
+    - ncat
+    - socat
 
 timeouts:
   command_seconds: 300
@@ -40,13 +45,11 @@ timeouts:
 
 execution:
   auto_approve: false
-  allow_interactive: false
+  allow_interactive: true
   decision_backend: codex
   codex_decision_timeout_seconds: 60
   codex_decision_worker_command: node scripts/codex_decision_worker.mjs
-  exploit_dispatch: sequential
+  exploit_dispatch: codex_parallel
   max_parallel_exploit_agents: 3
   decision_max_rounds: 3
-  # Enable Codex SDK fan-out mode with:
-  # exploit_dispatch: codex_parallel
-  # codex_worker_command: node scripts/codex_exploit_worker.mjs
+  codex_worker_command: node scripts/codex_exploit_worker.mjs

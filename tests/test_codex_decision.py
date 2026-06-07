@@ -3,7 +3,13 @@ import json
 from pentestagent.config import Settings
 from pentestagent.observability import JsonlLogger
 from pentestagent.schemas.findings import ReconReport, ServiceFinding
-from pentestagent.services.codex_decision import build_decision_payload, parse_json_object, run_codex_decision
+from pentestagent.services.codex_decision import (
+    build_decision_payload,
+    enrich_tasks_with_vulnerability_candidates,
+    parse_json_object,
+    parse_searchsploit_output,
+    run_codex_decision,
+)
 
 
 def test_build_codex_decision_payload_contains_recon_and_constraints():
@@ -18,6 +24,55 @@ def test_build_codex_decision_payload_contains_recon_and_constraints():
     assert payload["recon_report"]["services"][0]["port"] == 3000
     assert payload["context_snippets"] == ["context"]
     assert payload["max_tasks"] == 2
+    assert "vulnerability_candidates" in payload
+
+
+def test_parse_searchsploit_output_extracts_cve_and_path():
+    output = """
+Exploit Title                                      |  Path
+-------------------------------------------------- ---------------------------------
+Next.js Middleware 15.2.2 CVE-2025-29927 - Auth Bypass | multiple/webapps/52124.txt
+"""
+
+    parsed = parse_searchsploit_output(output)
+
+    assert parsed == [
+        {
+            "title": "Next.js Middleware 15.2.2 CVE-2025-29927 - Auth Bypass",
+            "path": "multiple/webapps/52124.txt",
+            "cve_ids": ["CVE-2025-29927"],
+        }
+    ]
+
+
+def test_enrich_tasks_with_vulnerability_candidates_adds_cve_context():
+    from pentestagent.schemas.tasks import ExploitTask
+
+    task = ExploitTask(
+        task_id="web3000-chain",
+        target_ip="10.10.10.10",
+        service_name="http",
+        port=3000,
+        hypothesis="Test Next.js middleware bypass",
+        confidence_score=8,
+    )
+    candidates = [
+        {
+            "source": "searchsploit",
+            "query": "Next.js 15.2.2",
+            "service_name": "http",
+            "port": 3000,
+            "title": "Next.js Middleware 15.2.2 CVE-2025-29927 - Auth Bypass",
+            "path": "multiple/webapps/52124.txt",
+            "cve_ids": ["CVE-2025-29927"],
+        }
+    ]
+
+    enriched = enrich_tasks_with_vulnerability_candidates([task], candidates)[0]
+
+    assert enriched.cve_ids == ["CVE-2025-29927"]
+    assert "searchsploit:Next.js 15.2.2:multiple/webapps/52124.txt" in enriched.evidence_refs
+    assert "CVE-2025-29927" in enriched.context_snippets[0]
 
 
 def test_parse_json_object_accepts_fenced_json():

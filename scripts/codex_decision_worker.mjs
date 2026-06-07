@@ -213,6 +213,9 @@ Return exactly one JSON object matching:
 
 Rules:
 - Use the normalized recon report, service_analysis, snippets, and prior results.
+- Use vulnerability_candidates when present. They come from recon-derived local search/tool results such as searchsploit.
+- If vulnerability_candidates contains cve_ids relevant to a service, create a CVE-scoped task and copy those CVE IDs into cve_ids.
+- If a vulnerability candidate has no CVE ID but has a plausible exploit title/path, include that title/path in context_snippets and evidence_refs so the Codex worker receives it.
 - Prefer high-signal tasks, but do not ignore lower-priority ports when they may be related.
 - Prioritize web follow-up on nonstandard web ports when service_analysis recommends it.
 - Avoid repeating previous failed or low-value attempts.

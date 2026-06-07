@@ -152,7 +152,7 @@ def test_select_pending_task_skips_replan_requested_task():
     assert selected is None
 
 
-def test_decision_replan_is_not_stopped_by_round_limit():
+def test_decision_replan_stops_after_no_progress_round_limit():
     tasks = build_heuristic_tasks(
         ReconReport(
             target_ip="10.10.10.10",
@@ -193,8 +193,10 @@ def test_decision_replan_is_not_stopped_by_round_limit():
         llm_client=ClaudeJSONClient(settings),
     )
 
-    assert result["decision_round"] == 11
     assert result["pending_task"] is None
+    assert result["latest_exploit_result"].status == "blocked"
+    assert "Decision stopped after repeated no-progress" in result["latest_exploit_result"].summary
+    assert result["exploit_results"][-1].task_id == "decision:no-progress"
 
 
 def test_build_history_rag_queries_detects_root_progress():
