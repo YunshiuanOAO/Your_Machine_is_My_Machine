@@ -1,0 +1,33 @@
+<svg width="1080" height="360" viewBox="0 0 1080 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Your Machine is My Machine</title>
+  <desc id="desc">A terminal-inspired logo for an autonomous pentest agent dashboard.</desc>
+  <rect width="1080" height="360" rx="32" fill="#0f1720"/>
+  <rect x="36" y="36" width="1008" height="288" rx="24" fill="#17202a" stroke="#304253" stroke-width="2"/>
+  <circle cx="72" cy="68" r="8" fill="#ef5b5b"/>
+  <circle cx="100" cy="68" r="8" fill="#f3c15d"/>
+  <circle cx="128" cy="68" r="8" fill="#4fc37a"/>
+  <path d="M78 161L142 113L142 145L115 161L142 177L142 209L78 161Z" fill="#41a6f6"/>
+  <path d="M220 113L156 209H195L259 113H220Z" fill="#4fc37a"/>
+  <path d="M330 161L266 209L266 177L293 161L266 145L266 113L330 161Z" fill="#41a6f6"/>
+  <rect x="78" y="244" width="250" height="12" rx="6" fill="#304253"/>
+  <rect x="78" y="270" width="168" height="12" rx="6" fill="#304253"/>
+  <path d="M418 108H1002" stroke="#304253" stroke-width="2"/>
+  <text x="418" y="164" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="42" font-weight="800" letter-spacing="0">
+    Your Machine is My Machine
+  </text>
+  <text x="420" y="208" fill="#9fb0c3" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="600" letter-spacing="0">
+    Coordinator-specialist pentest agent for authorized lab targets
+  </text>
+  <rect x="420" y="244" width="170" height="34" rx="17" fill="#123d2a" stroke="#1d8f5b"/>
+  <text x="444" y="267" fill="#9cf2bd" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="14" font-weight="800" letter-spacing="0">
+    RECON
+  </text>
+  <rect x="606" y="244" width="178" height="34" rx="17" fill="#102f4e" stroke="#2f83c9"/>
+  <text x="630" y="267" fill="#a8d9ff" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="14" font-weight="800" letter-spacing="0">
+    FAN-OUT
+  </text>
+  <rect x="800" y="244" width="164" height="34" rx="17" fill="#462f11" stroke="#b98229"/>
+  <text x="824" y="267" fill="#ffd58a" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="14" font-weight="800" letter-spacing="0">
+    SHELL
+  </text>
+</svg>
