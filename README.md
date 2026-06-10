@@ -103,14 +103,13 @@ Kali / HTB 環境：
 ENV=kali source scripts/config_secrets.sh
 ```
 
-### OpenAI-Compatible Provider
+### OpenAI
 
-例如 Yunshiuan endpoint：
+使用 OpenAI API：
 
 ```bash
 export PENTEST_MODEL_PROVIDER=openai
-export PENTEST_MODEL_NAME=gpt-4.1-mini
-export OPENAI_BASE_URL="https://api.yunshiuan.com/"
+export PENTEST_MODEL_NAME=gpt-4.1
 export OPENAI_API_KEY="..."
 uv run python -m pentestagent.main -t <TARGET_IP> --env openai
 ```
