@@ -28,16 +28,6 @@ Recon Agent -> Decision Coordinator -> Solver Fan-Out -> Agent Monitor -> Shell 
 
 LLM / Codex solvers produce structured tasks, evidence, and observable reasoning. Commands are still executed locally, and full artifacts are written to the run directory.
 
-## Demo
-
-Click the image below to watch the demo video:
-
-<p align="center">
-  <a href="https://youtu.be/w-S8ucXFpPs">
-    <img src="https://img.youtube.com/vi/w-S8ucXFpPs/maxresdefault.jpg" alt="Your_Machine_is_My_Machine demo video" width="860">
-  </a>
-</p>
-
 ## Features
 
 - Recon and service fingerprinting.

@@ -28,16 +28,6 @@ Recon Agent -> Decision Coordinator -> Solver Fan-Out -> Agent Monitor -> Shell 
 
 LLM / Codex solver 會提出結構化任務、證據與可觀測推理結果。實際命令仍由本地環境執行，並寫入完整 artifacts。
 
-## Demo
-
-點擊下方圖片觀看 demo 影片：
-
-<p align="center">
-  <a href="https://youtu.be/w-S8ucXFpPs">
-    <img src="https://img.youtube.com/vi/w-S8ucXFpPs/maxresdefault.jpg" alt="Your_Machine_is_My_Machine demo video" width="860">
-  </a>
-</p>
-
 ## 主要功能
 
 - Recon 與服務指紋辨識。
