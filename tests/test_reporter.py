@@ -31,8 +31,11 @@ def test_success_report_includes_shell_handoff(tmp_path):
     assert report["status"] == "success"
     assert report["shell_access"]["available"] is True
     assert report["shell_access"]["handoffs"][0]["attach_command"] == "tmux attach -t shell-task-web"
+    assert report["artifacts"]["skill"].endswith("success_skill/SKILL.md")
+    assert (tmp_path / "success_skill" / "SKILL.md").exists()
     assert "## Shell Access" in (tmp_path / "final_report.md").read_text(encoding="utf-8")
     assert "tmux attach -t shell-task-web" in (tmp_path / "final_report.md").read_text(encoding="utf-8")
+    assert "Success skill:" in (tmp_path / "final_report.md").read_text(encoding="utf-8")
 
 
 def test_success_report_does_not_claim_shell_without_handoff(tmp_path):
@@ -54,4 +57,6 @@ def test_success_report_does_not_claim_shell_without_handoff(tmp_path):
 
     assert report["status"] == "failed_or_blocked"
     assert report["shell_access"]["available"] is False
+    assert "skill" not in report["artifacts"]
+    assert not (tmp_path / "success_skill" / "SKILL.md").exists()
     assert "No interactive shell handoff was recorded" in report["shell_access"]["note"]

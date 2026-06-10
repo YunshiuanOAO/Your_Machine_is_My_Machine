@@ -170,18 +170,16 @@ export PENTEST_DECISION_BACKEND=codex
 export PENTEST_CODEX_DECISION_TIMEOUT_SECONDS=60
 export PENTEST_CODEX_DECISION_WORKER_COMMAND="node scripts/codex_decision_worker.mjs"
 export PENTEST_CODEX_WORKER_COMMAND="node scripts/codex_exploit_worker.mjs"
-export PENTEST_MAX_PARALLEL_EXPLOIT_AGENTS=3
-export PENTEST_DECISION_MAX_ROUNDS=3
 uv run python -m pentestagent.main -t <TARGET_IP> --env kali
 ```
 
 Decision behavior in this mode:
 
 - Generate several scoped exploit worker tasks from recon, RAG, and previous branch reports.
-- Dispatch up to `PENTEST_MAX_PARALLEL_EXPLOIT_AGENTS` Codex SDK workers.
+- Dispatch all Codex SDK worker tasks produced by the decision coordinator.
 - Require every worker to return a complete exploit report, including failed and blocked attempts.
 - Re-run decision after failed rounds, using the previous reports as context.
-- Stop when any branch succeeds, when no useful branch remains, or when `PENTEST_DECISION_MAX_ROUNDS` is reached.
+- Stop when any branch succeeds, when the decision coordinator can no longer produce a useful branch, or when the run timeout is reached.
 
 Codex decision worker diagnostics are written to `reports/<run>/codex_decision/payload.json`, `stdout.txt`, and `stderr.txt`. If Codex is unavailable, times out, or reports a worker failure, the coordinator falls back to the regular LLM or heuristic task builder.
 

@@ -12,18 +12,17 @@ from pentestagent.services.codex_decision import (
 )
 
 
-def test_build_codex_decision_payload_contains_recon_and_constraints():
+def test_build_codex_decision_payload_contains_recon_and_context():
     report = ReconReport(
         target_ip="10.10.10.10",
         services=[ServiceFinding(port=3000, service_name="http")],
     )
 
-    payload = build_decision_payload(report, ["context"], Settings(max_tasks=2), {"exploit_results": []})
+    payload = build_decision_payload(report, ["context"], Settings(), {"exploit_results": []})
 
     assert payload["target_ip"] == "10.10.10.10"
     assert payload["recon_report"]["services"][0]["port"] == 3000
     assert payload["context_snippets"] == ["context"]
-    assert payload["max_tasks"] == 2
     assert "vulnerability_candidates" in payload
 
 

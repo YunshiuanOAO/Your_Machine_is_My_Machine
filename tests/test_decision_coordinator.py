@@ -7,7 +7,7 @@ from pentestagent.agents.decision_coordinator import (
 )
 from pentestagent.config import Settings
 from pentestagent.schemas.findings import ReconReport, ServiceAnalysis, ServiceFinding
-from pentestagent.schemas.tasks import ExploitResult
+from pentestagent.schemas.tasks import AgentRunResult, ExploitResult
 from pentestagent.services.llm import ClaudeJSONClient
 
 
@@ -20,9 +20,9 @@ def test_build_heuristic_tasks_prefers_versioned_web_services():
         ],
     )
 
-    tasks = build_heuristic_tasks(report, ["context"], Settings(max_tasks=1))
+    tasks = build_heuristic_tasks(report, ["context"], Settings())
 
-    assert len(tasks) == 1
+    assert len(tasks) == 2
     assert tasks[0].port == 80
     assert tasks[0].context_snippets == ["context"]
     assert tasks[0].objective
@@ -60,7 +60,7 @@ def test_build_heuristic_tasks_includes_recon_service_analysis_context():
         ],
     )
 
-    tasks = build_heuristic_tasks(report, ["generic context"], Settings(max_tasks=1, max_rag_snippets=3))
+    tasks = build_heuristic_tasks(report, ["generic context"], Settings(max_rag_snippets=3))
 
     assert tasks[0].port == 3000
     assert "Recon service analysis for port 3000/http" in tasks[0].context_snippets[0]
@@ -93,7 +93,7 @@ def test_build_heuristic_tasks_uses_service_analysis_priority():
         ],
     )
 
-    tasks = build_heuristic_tasks(report, [], Settings(max_tasks=2))
+    tasks = build_heuristic_tasks(report, [], Settings())
 
     assert [task.port for task in tasks] == [3000, 22]
 
@@ -108,7 +108,7 @@ def test_select_pending_task_rotates_to_unattempted_tasks_before_retries():
             ],
         ),
         [],
-        Settings(max_tasks=2),
+        Settings(),
     )
 
     first = select_pending_task(tasks, [], retry_count=0, max_retries=2)
@@ -132,7 +132,7 @@ def test_select_pending_task_skips_replan_requested_task():
             ],
         ),
         [],
-        Settings(max_tasks=1),
+        Settings(),
     )
 
     selected = select_pending_task(
@@ -152,7 +152,7 @@ def test_select_pending_task_skips_replan_requested_task():
     assert selected is None
 
 
-def test_decision_replan_stops_after_no_progress_round_limit():
+def test_decision_replan_does_not_stop_on_round_limit():
     tasks = build_heuristic_tasks(
         ReconReport(
             target_ip="10.10.10.10",
@@ -161,14 +161,12 @@ def test_decision_replan_stops_after_no_progress_round_limit():
             ],
         ),
         [],
-        Settings(max_tasks=1),
+        Settings(),
     )
     settings = Settings(
-        max_tasks=1,
         use_llm=False,
         decision_backend="codex",
         codex_decision_worker_command=None,
-        decision_max_rounds=1,
     )
 
     result = run(
@@ -187,16 +185,90 @@ def test_decision_replan_stops_after_no_progress_round_limit():
                 )
             ],
             "decision_round": 10,
-            "max_decision_rounds": 1,
         },
         settings=settings,
         llm_client=ClaudeJSONClient(settings),
     )
 
     assert result["pending_task"] is None
-    assert result["latest_exploit_result"].status == "blocked"
-    assert "Decision stopped after repeated no-progress" in result["latest_exploit_result"].summary
-    assert result["exploit_results"][-1].task_id == "decision:no-progress"
+    assert "latest_exploit_result" not in result
+    assert result["decision_round"] == 11
+
+
+def test_codex_parallel_dispatches_all_decision_tasks():
+    settings = Settings(
+        exploit_dispatch="codex_parallel",
+        use_llm=False,
+        decision_backend="codex",
+        codex_decision_worker_command=None,
+    )
+
+    result = run(
+        {
+            "recon_report": ReconReport(
+                target_ip="10.10.10.10",
+                services=[
+                    ServiceFinding(port=80, service_name="http"),
+                    ServiceFinding(port=21, service_name="ftp"),
+                    ServiceFinding(port=22, service_name="ssh"),
+                ],
+            ),
+            "agent_results": [],
+            "agent_tasks": [],
+            "decision_round": 0,
+        },
+        settings=settings,
+        llm_client=ClaudeJSONClient(settings),
+    )
+
+    assert len(result["agent_tasks"]) == 3
+    assert len(result["pending_agent_tasks"]) == 3
+
+
+def test_codex_parallel_runs_backlog_before_new_decision():
+    settings = Settings(
+        exploit_dispatch="codex_parallel",
+        use_llm=False,
+        decision_backend="codex",
+        codex_decision_worker_command=None,
+    )
+    tasks = build_heuristic_tasks(
+        ReconReport(
+            target_ip="10.10.10.10",
+            services=[
+                ServiceFinding(port=80, service_name="http"),
+                ServiceFinding(port=21, service_name="ftp"),
+                ServiceFinding(port=22, service_name="ssh"),
+            ],
+        ),
+        [],
+        Settings(),
+    )
+    agent_tasks = [task.to_spawn_task([]) for task in tasks]
+
+    result = run(
+        {
+            "recon_report": ReconReport(
+                target_ip="10.10.10.10",
+                services=[
+                    ServiceFinding(port=80, service_name="http"),
+                    ServiceFinding(port=21, service_name="ftp"),
+                    ServiceFinding(port=22, service_name="ssh"),
+                ],
+            ),
+            "agent_tasks": agent_tasks,
+            "agent_results": [
+                AgentRunResult(task_id=agent_tasks[0].task_id, agent_kind="exploit", status="failed", summary="no path"),
+                AgentRunResult(task_id=agent_tasks[1].task_id, agent_kind="exploit", status="retry", summary="needs follow-up"),
+            ],
+            "decision_round": 1,
+        },
+        settings=settings,
+        llm_client=ClaudeJSONClient(settings),
+    )
+
+    assert [task.task_id for task in result["pending_agent_tasks"]] == [agent_tasks[2].task_id]
+    assert len(result["agent_tasks"]) == 3
 
 
 def test_build_history_rag_queries_detects_root_progress():

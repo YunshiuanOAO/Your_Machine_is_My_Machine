@@ -88,8 +88,8 @@ def test_run_timeout_routes_to_report():
 def test_codex_routes_fanout_until_success_or_decision_gives_up():
     assert route_after_codex_decision({"pending_agent_tasks": [object()]}) == "fanout"
     assert route_after_codex_decision({"pending_agent_tasks": []}) == "report"
-    assert route_after_codex_aggregate({"agent_results": [], "decision_round": 1, "max_decision_rounds": 3}) == "decision"
-    assert route_after_codex_aggregate({"agent_results": [], "decision_round": 3, "max_decision_rounds": 3}) == "decision"
+    assert route_after_codex_aggregate({"agent_results": [], "decision_round": 1}) == "decision"
+    assert route_after_codex_aggregate({"agent_results": [], "decision_round": 3}) == "decision"
     assert route_after_codex_aggregate({"agent_results": [ExploitResult(task_id="x", status="success", summary="fingerprint only")]}) == "decision"
     assert route_after_codex_aggregate(
         {

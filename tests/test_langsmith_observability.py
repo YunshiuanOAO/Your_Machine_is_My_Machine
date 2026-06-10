@@ -20,7 +20,6 @@ def test_langsmith_run_config_includes_metadata(monkeypatch):
         langsmith_api_key="lsv2_test",
         langsmith_project="pentestagent-kali",
         max_retries=4,
-        max_tasks=3,
     )
 
     config = langsmith_run_config(settings, "10.10.10.10", "run_1")
@@ -31,5 +30,5 @@ def test_langsmith_run_config_includes_metadata(monkeypatch):
     assert config["metadata"]["target_ip"] == "10.10.10.10"
     assert config["metadata"]["run_id"] == "run_1"
     assert config["metadata"]["max_retries"] == 4
-    assert config["metadata"]["max_tasks"] == 3
+    assert "max_tasks" not in config["metadata"]
     assert os.environ["LANGSMITH_API_KEY"] == "lsv2_test"
