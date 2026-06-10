@@ -50,7 +50,7 @@ fi
 # --- 2. External pentest tools on PATH ------------------------------------
 hdr "2. External tools on PATH"
 # Tools the scan pipeline shells out to directly:
-for t in rustscan dirsearch whatweb; do
+for t in rustscan nmap dirsearch whatweb; do
   if command -v "$t" >/dev/null 2>&1; then ok "$t"; else bad "$t not found (scan pipeline needs it)"; fi
 done
 # Tools the LLM may propose as commands (allowlisted) but not strictly required:
@@ -89,7 +89,11 @@ if [ -n "$WL" ]; then
     /*) WL_PATH="$WL" ;;
     *)  WL_PATH="$ROOT/$WL" ;;
   esac
-  if [ -f "$WL_PATH" ]; then ok "wordlist exists: $WL_PATH"; else bad "wordlist missing: $WL_PATH"; fi
+  if [ -f "$WL_PATH" ]; then
+    ok "wordlist exists: $WL_PATH"
+  else
+    warn "wordlist missing: $WL_PATH (dirsearch will fail only if web scans need it)"
+  fi
 else
   warn "could not resolve wordlist path from Settings"
 fi
@@ -134,11 +138,28 @@ else
   bad "knowledge base check failed. Run: uv run pytest tests/test_knowledge_base.py -q"
 fi
 
-if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-  ok "ANTHROPIC_API_KEY is set"
-else
-  warn "ANTHROPIC_API_KEY not set (required unless you run with --no-llm)"
-fi
+MODEL_PROVIDER="$(uv run python -c "from pentestagent.config import Settings; s=Settings.load(env='${ENV_NAME}'); print(s.model_provider.lower())" 2>/dev/null)"
+case "$MODEL_PROVIDER" in
+  openai|openai-compatible|openai_compatible)
+    ok "model provider: $MODEL_PROVIDER"
+    if [ -n "${OPENAI_API_KEY:-}" ]; then
+      ok "OPENAI_API_KEY is set"
+    else
+      warn "OPENAI_API_KEY not set (required for OpenAI-compatible LLM runs unless you run with --no-llm)"
+    fi
+    ;;
+  anthropic|"")
+    ok "model provider: ${MODEL_PROVIDER:-anthropic}"
+    if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+      ok "ANTHROPIC_API_KEY is set"
+    else
+      warn "ANTHROPIC_API_KEY not set (required for Anthropic LLM runs unless you run with --no-llm)"
+    fi
+    ;;
+  *)
+    warn "unknown model provider: $MODEL_PROVIDER (ensure the matching API key is exported unless you run with --no-llm)"
+    ;;
+esac
 
 case "${LANGSMITH_TRACING:-}" in
   1|true|TRUE|yes|YES|on|ON)

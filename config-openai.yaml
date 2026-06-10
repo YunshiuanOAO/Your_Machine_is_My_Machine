@@ -1,0 +1,18 @@
+# OpenAI-compatible model provider overrides.
+# Usage:
+#   export OPENAI_API_KEY="..."
+#   export OPENAI_BASE_URL="https://api.yunshiuan.com/"
+#   uv run python -m pentestagent.main -t <TARGET_IP> --env openai
+runtime:
+  env: openai
+
+model:
+  provider: openai
+  name: gpt-4.1-mini
+
+observability:
+  langsmith_project: pentestagent-openai
+
+execution:
+  auto_approve: false
+  exploit_dispatch: sequential

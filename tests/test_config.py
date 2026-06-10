@@ -35,12 +35,16 @@ tools:
     assert settings.max_retries == 4
     assert settings.run_timeout_seconds == 120
     assert settings.command_timeout == 11
+    assert settings.web_wordlist == "/usr/share/dirb/wordlists/common.txt"
     assert settings.rag_top_k == 5
     assert settings.max_rag_snippets == 7
     assert settings.rag_snippet_budget_chars == 1234
     assert settings.langsmith_tracing is False
     assert settings.langsmith_project == "pentestagent-dev"
     assert settings.allowed_tools == ("rustscan", "curl")
+    assert settings.decision_backend == "codex"
+    assert settings.codex_decision_timeout == 60
+    assert settings.codex_decision_worker_command == "node scripts/codex_decision_worker.mjs"
 
 
 def test_env_specific_config_overrides_base(tmp_path):
@@ -52,6 +56,9 @@ timeouts:
   scan_seconds: 100
 execution:
   exploit_dispatch: sequential
+  decision_backend: llm
+  codex_decision_timeout_seconds: 12
+  codex_decision_worker_command: node custom_decision_worker.mjs
 """,
         encoding="utf-8",
     )
@@ -73,6 +80,9 @@ execution:
     assert settings.max_retries == 9
     assert settings.scan_timeout == 600
     assert settings.exploit_dispatch == "sequential"
+    assert settings.decision_backend == "llm"
+    assert settings.codex_decision_timeout == 12
+    assert settings.codex_decision_worker_command == "node custom_decision_worker.mjs"
 
 
 def test_environment_variables_override_yaml_layers(tmp_path):
@@ -117,3 +127,29 @@ tools:
     assert settings.langsmith_api_key == "lsv2_test"
     assert settings.langsmith_project == "pentestagent-test"
     assert settings.langsmith_endpoint == "https://eu.api.smith.langchain.com"
+
+
+def test_openai_environment_variables_are_loaded(tmp_path):
+    (tmp_path / "config.yaml").write_text(
+        """
+model:
+  provider: anthropic
+  name: claude-test
+""",
+        encoding="utf-8",
+    )
+
+    settings = Settings.load(
+        project_root=tmp_path,
+        environ={
+            "PENTEST_MODEL_PROVIDER": "openai",
+            "PENTEST_MODEL_NAME": "gpt-test",
+            "OPENAI_API_KEY": "test-key",
+            "OPENAI_BASE_URL": "https://api.yunshiuan.com/",
+        },
+    )
+
+    assert settings.model_provider == "openai"
+    assert settings.model == "gpt-test"
+    assert settings.openai_api_key == "test-key"
+    assert settings.openai_base_url == "https://api.yunshiuan.com/"

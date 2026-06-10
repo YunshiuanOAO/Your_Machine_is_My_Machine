@@ -10,15 +10,24 @@ runtime:
 observability:
   langsmith_project: pentestagent-kali
 
+paths:
+  # Kali's packaged wordlists live under /usr/share/wordlists. The preflight
+  # treats this as advisory because operators may choose a target-specific list.
+  web_wordlist: /usr/share/dirb/wordlists/common.txt
+
 timeouts:
   # Full-range RustScan scans against a live HTB box are slower than a local
   # lab target; give them more headroom.
   scan_seconds: 600
-  command_seconds: 300
-  web_scan_seconds: 300
+  # Web enumeration can legitimately take several minutes. The executor caps
+  # every tool by command_seconds, so keep this at least as high as web scans.
+  command_seconds: 900
+  web_scan_seconds: 900
 
 execution:
-  # Keep human approval on for live targets. Interactive stays off in v1.
+  # Keep human approval on for live targets. Interactive commands are handed off
+  # through a local tmux session so the operator can attach to a shell manually.
   auto_approve: false
-  allow_interactive: false
-  exploit_dispatch: sequential
+  allow_interactive: true
+  exploit_dispatch: codex_parallel
+  codex_worker_command: node scripts/codex_exploit_worker.mjs

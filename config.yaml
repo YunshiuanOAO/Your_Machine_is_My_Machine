@@ -1,7 +1,6 @@
 runtime:
   env: dev
   max_retries: 2
-  max_tasks: 3
   run_timeout_seconds: 3600
 
 model:
@@ -11,7 +10,7 @@ model:
 paths:
   report_dir: reports
   knowledge_base_path: my_knowledge_base
-  web_wordlist: wordlists/medium.txt
+  web_wordlist: /usr/share/dirb/wordlists/common.txt
 
 rag:
   collection_name: hacktricks_kb
@@ -26,11 +25,17 @@ observability:
 tools:
   allowed:
     - rustscan
+    - nmap
     - dirsearch
     - whatweb
     - searchsploit
     - msfconsole
     - curl
+    - python3
+    - node
+    - nc
+    - ncat
+    - socat
 
 timeouts:
   command_seconds: 300
@@ -39,5 +44,9 @@ timeouts:
 
 execution:
   auto_approve: false
-  allow_interactive: false
-  exploit_dispatch: sequential
+  allow_interactive: true
+  decision_backend: codex
+  codex_decision_timeout_seconds: 60
+  codex_decision_worker_command: node scripts/codex_decision_worker.mjs
+  exploit_dispatch: codex_parallel
+  codex_worker_command: node scripts/codex_exploit_worker.mjs

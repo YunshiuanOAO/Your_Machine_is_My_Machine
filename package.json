@@ -1,0 +1,11 @@
+{
+  "name": "pentestagent-codex-workers",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@openai/codex-sdk": "^0.134.0"
+  }
+}

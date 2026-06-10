@@ -39,7 +39,7 @@ _config_secrets_interrupted() {
 }
 
 _config_secrets_cleanup() {
-  unset is_sourced env_name default_project langsmith_project langsmith_endpoint
+  unset is_sourced env_name default_project langsmith_project langsmith_endpoint llm_provider openai_base_url openai_model anthropic_model
   unset CONFIG_SECRETS_READ_VALUE CONFIG_SECRETS_OLD_STTY
   unset -f say_ok say_warn _config_secrets_restore_tty _config_secrets_interrupted _config_secrets_cleanup ask_yes_no read_hidden read_visible_default set_secret_value prompt_secret 2>/dev/null
 }
@@ -127,6 +127,10 @@ set_secret_value() {
       ANTHROPIC_API_KEY="$secret_value"
       export ANTHROPIC_API_KEY
       ;;
+    OPENAI_API_KEY)
+      OPENAI_API_KEY="$secret_value"
+      export OPENAI_API_KEY
+      ;;
     LANGSMITH_API_KEY)
       LANGSMITH_API_KEY="$secret_value"
       export LANGSMITH_API_KEY
@@ -170,9 +174,42 @@ prompt_secret() {
 env_name="${ENV:-${PENTEST_ENV:-dev}}"
 default_project="pentestagent-$env_name"
 
-if ! prompt_secret ANTHROPIC_API_KEY "Anthropic API key"; then
-  _config_secrets_cleanup
-  return 130
+llm_provider="${PENTEST_MODEL_PROVIDER:-anthropic}"
+if ask_yes_no "Use OpenAI-compatible provider for this shell?" n; then
+  llm_provider="openai"
+fi
+
+case "$llm_provider" in
+  openai|openai-compatible|openai_compatible)
+    export PENTEST_MODEL_PROVIDER=openai
+    openai_base_url="$(read_visible_default "OpenAI-compatible base URL" "${OPENAI_BASE_URL:-https://api.yunshiuan.com/}")"
+    export OPENAI_BASE_URL="$openai_base_url"
+    say_ok "OPENAI_BASE_URL=$OPENAI_BASE_URL"
+
+    openai_model="$(read_visible_default "OpenAI-compatible model name" "${PENTEST_MODEL_NAME:-gpt-4.1-mini}")"
+    export PENTEST_MODEL_NAME="$openai_model"
+    say_ok "PENTEST_MODEL_NAME=$PENTEST_MODEL_NAME"
+
+    if ! prompt_secret OPENAI_API_KEY "OpenAI-compatible API key"; then
+      _config_secrets_cleanup
+      return 130
+    fi
+    ;;
+  *)
+    export PENTEST_MODEL_PROVIDER=anthropic
+    anthropic_model="$(read_visible_default "Claude model name" "${PENTEST_MODEL_NAME:-claude-sonnet-4-6}")"
+    export PENTEST_MODEL_NAME="$anthropic_model"
+    say_ok "PENTEST_MODEL_NAME=$PENTEST_MODEL_NAME"
+
+    if ! prompt_secret ANTHROPIC_API_KEY "Anthropic API key"; then
+      _config_secrets_cleanup
+      return 130
+    fi
+    ;;
+esac
+
+if [ -n "$PENTEST_MODEL_PROVIDER" ]; then
+  say_ok "PENTEST_MODEL_PROVIDER=$PENTEST_MODEL_PROVIDER"
 fi
 
 if ask_yes_no "Enable LangSmith Cloud tracing for this shell?" n; then
