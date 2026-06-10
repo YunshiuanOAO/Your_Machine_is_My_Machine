@@ -1,3 +1,4 @@
+import json
 import time
 
 from pentestagent.config import Settings
@@ -5,7 +6,8 @@ from pentestagent.graph.builder import build_graph
 from pentestagent.observability import RunArtifacts
 from pentestagent.schemas.findings import ReconReport, ServiceFinding
 from pentestagent.schemas.tasks import SpawnAgentTask
-from pentestagent.services.codex_worker import RunningWorker, parse_worker_result, recover_completed_worker_stdout, run_codex_exploit_fanout
+from pentestagent.observability import JsonlLogger
+from pentestagent.services.codex_worker import RunningWorker, drain_worker_progress, parse_worker_result, recover_completed_worker_stdout, run_codex_exploit_fanout
 
 
 def test_codex_fanout_returns_blocked_report_when_worker_not_configured(tmp_path):
@@ -123,6 +125,43 @@ def test_recover_completed_worker_stdout_from_progress(tmp_path):
 
     assert recovered is not None
     assert parse_worker_result(task, recovered, "", 0).status == "retry"
+
+
+def test_drain_worker_progress_sanitizes_reserved_payload_keys(tmp_path):
+    task = SpawnAgentTask(
+        task_id="outer-task",
+        agent_kind="exploit",
+        target_ip="10.10.10.10",
+        objective="Validate HTTP exploit path",
+        service_name="http",
+        port=80,
+    )
+    progress_path = tmp_path / "worker.progress.jsonl"
+    progress_path.write_text(
+        '{"event":"worker.item","task_id":"inner-task","fanout_round":99,"item_type":"agent_message","status":"completed","summary":"done"}\n',
+        encoding="utf-8",
+    )
+    worker = RunningWorker(
+        task=task,
+        process=None,  # type: ignore[arg-type]
+        stdout_path=tmp_path / "stdout.json",
+        stderr_path=tmp_path / "stderr.txt",
+        progress_path=progress_path,
+        progress_offset=0,
+        started_at=0,
+        fanout_round=1,
+    )
+    logger = JsonlLogger(tmp_path / "events.jsonl")
+
+    drain_worker_progress(worker, logger)
+
+    event = json.loads((tmp_path / "events.jsonl").read_text(encoding="utf-8"))
+    assert event["task_id"] == "outer-task"
+    assert event["fanout_round"] == 1
+    assert event["event"] == "codex_worker_progress"
+    assert event["worker_event"] == "worker.item"
+    assert event["worker_task_id"] == "inner-task"
+    assert event["worker_fanout_round"] == 99
 
 
 def test_codex_parallel_graph_reports_after_decision_has_no_new_tasks(tmp_path):

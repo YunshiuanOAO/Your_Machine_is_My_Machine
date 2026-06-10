@@ -31,10 +31,16 @@ def test_success_report_includes_shell_handoff(tmp_path):
     assert report["status"] == "success"
     assert report["shell_access"]["available"] is True
     assert report["shell_access"]["handoffs"][0]["attach_command"] == "tmux attach -t shell-task-web"
+    assert report["shell_access"]["handoffs"][0]["terminal_command"] == "script -qfec 'tmux attach-session -t shell-task-web' /dev/null"
+    assert report["shell_access"]["handoffs"][0]["tmux_pty_attach_command"] == "script -qfec 'tmux attach-session -t shell-task-web' /dev/null"
+    assert report["shell_access"]["handoffs"][0]["tmux_attach_command"] == "tmux attach-session -t shell-task-web"
+    assert report["shell_access"]["handoffs"][0]["tmux_switch_command"] == "tmux switch-client -t shell-task-web"
+    assert "/dev/tty" not in report["shell_access"]["handoffs"][0]["terminal_command"]
     assert report["artifacts"]["skill"].endswith("success_skill/SKILL.md")
     assert (tmp_path / "success_skill" / "SKILL.md").exists()
     assert "## Shell Access" in (tmp_path / "final_report.md").read_text(encoding="utf-8")
     assert "tmux attach -t shell-task-web" in (tmp_path / "final_report.md").read_text(encoding="utf-8")
+    assert "terminal_command" in (tmp_path / "final_report.md").read_text(encoding="utf-8")
     assert "Success skill:" in (tmp_path / "final_report.md").read_text(encoding="utf-8")
 
 
