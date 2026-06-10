@@ -7,7 +7,13 @@
 </p>
 
 <p align="center">
-  <strong>Demo video coming soon.</strong>
+  <a href="https://youtu.be/w-S8ucXFpPs">
+    <img src="https://img.youtube.com/vi/w-S8ucXFpPs/maxresdefault.jpg" alt="Your_Machine_is_My_Machine demo video" width="860">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/w-S8ucXFpPs"><strong>Watch the Demo Video</strong></a>
 </p>
 
 ---
@@ -24,11 +30,13 @@ LLM / Codex solvers produce structured tasks, evidence, and observable reasoning
 
 ## Demo
 
-A demo video will be added here later.
+Click the image below to watch the demo video:
 
-```text
-TODO: Add demo video / GIF / asciinema link.
-```
+<p align="center">
+  <a href="https://youtu.be/w-S8ucXFpPs">
+    <img src="https://img.youtube.com/vi/w-S8ucXFpPs/maxresdefault.jpg" alt="Your_Machine_is_My_Machine demo video" width="860">
+  </a>
+</p>
 
 ## Features
 

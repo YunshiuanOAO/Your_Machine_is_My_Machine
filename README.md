@@ -7,7 +7,13 @@
 </p>
 
 <p align="center">
-  <strong>Demo video coming soon.</strong>
+  <a href="https://youtu.be/w-S8ucXFpPs">
+    <img src="https://img.youtube.com/vi/w-S8ucXFpPs/maxresdefault.jpg" alt="Your_Machine_is_My_Machine demo video" width="860">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/w-S8ucXFpPs"><strong>觀看 Demo 影片</strong></a>
 </p>
 
 ---
@@ -24,11 +30,13 @@ LLM / Codex solver 會提出結構化任務、證據與可觀測推理結果。�
 
 ## Demo
 
-之後會在這裡放上 demo 影片。
+點擊下方圖片觀看 demo 影片：
 
-```text
-TODO: Add demo video / GIF / asciinema link.
-```
+<p align="center">
+  <a href="https://youtu.be/w-S8ucXFpPs">
+    <img src="https://img.youtube.com/vi/w-S8ucXFpPs/maxresdefault.jpg" alt="Your_Machine_is_My_Machine demo video" width="860">
+  </a>
+</p>
 
 ## 主要功能
 
